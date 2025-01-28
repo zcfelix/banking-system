@@ -20,11 +20,11 @@ public class TransactionController {
     @PostMapping
     public ResponseEntity<TransactionResponse> createTransaction(@RequestBody CreateTransactionRequest request) {
         Transaction transaction = transactionService.createTransaction(
-                request.getOrderId(),
-                request.getAmount(),
-                request.getType(),
-                request.getCategory(),
-                request.getDescription()
+                request.orderId(),
+                request.amount(),
+                request.type(),
+                request.category(),
+                request.description()
         );
         TransactionResponse response = new TransactionResponse(
                 transaction.getId(),
