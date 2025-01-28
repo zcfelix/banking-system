@@ -5,12 +5,14 @@ import java.util.Objects;
 
 public class Transaction {
     private Long id;
+    private String orderId;
     private BigDecimal amount;
     private String type;
     private String category;
     private String description;
 
-    public Transaction(BigDecimal amount, String type, String category, String description) {
+    public Transaction(String orderId, BigDecimal amount, String type, String category, String description) {
+        this.orderId = orderId;
         this.amount = amount;
         this.type = type;
         this.category = category;
@@ -24,6 +26,14 @@ public class Transaction {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
     }
 
     public BigDecimal getAmount() {

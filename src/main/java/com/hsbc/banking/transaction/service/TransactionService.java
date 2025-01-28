@@ -14,8 +14,12 @@ public class TransactionService {
         this.transactionRepository = transactionRepository;
     }
 
-    public Transaction createTransaction(BigDecimal amount, String type, String category, String description) {
-        Transaction transaction = new Transaction(amount, type, category, description);
+    public Transaction createTransaction(String orderId,
+                                         BigDecimal amount,
+                                         String type,
+                                         String category,
+                                         String description) {
+        Transaction transaction = new Transaction(orderId, amount, type, category, description);
         return transactionRepository.save(transaction);
     }
 } 

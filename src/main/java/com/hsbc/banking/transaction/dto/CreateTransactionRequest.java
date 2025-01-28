@@ -4,12 +4,21 @@ import java.math.BigDecimal;
 import java.util.Objects;
 
 public class CreateTransactionRequest {
+    private String orderId;
     private BigDecimal amount;
     private String type;
     private String category;
     private String description;
 
     // Getters and Setters
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
+    }
+
     public BigDecimal getAmount() {
         return amount;
     }
@@ -47,7 +56,8 @@ public class CreateTransactionRequest {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         CreateTransactionRequest that = (CreateTransactionRequest) o;
-        return Objects.equals(amount, that.amount) &&
+        return Objects.equals(orderId, that.orderId) &&
+               Objects.equals(amount, that.amount) &&
                Objects.equals(type, that.type) &&
                Objects.equals(category, that.category) &&
                Objects.equals(description, that.description);
@@ -55,6 +65,6 @@ public class CreateTransactionRequest {
 
     @Override
     public int hashCode() {
-        return Objects.hash(amount, type, category, description);
+        return Objects.hash(orderId, amount, type, category, description);
     }
 } 

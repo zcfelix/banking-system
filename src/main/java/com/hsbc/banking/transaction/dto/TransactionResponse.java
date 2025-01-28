@@ -1,19 +1,27 @@
 package com.hsbc.banking.transaction.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+
 import java.math.BigDecimal;
 import java.util.Objects;
 
 public class TransactionResponse {
     private Long id;
+    private String orderId;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "#.00")
     private BigDecimal amount;
     private String type;
     private String category;
     private String description;
 
-    public TransactionResponse(Long id, BigDecimal amount, String type, String category, String description) {
+    public TransactionResponse(Long id,
+                               String orderId,
+                               BigDecimal amount,
+                               String type,
+                               String category,
+                               String description) {
         this.id = id;
+        this.orderId = orderId;
         this.amount = amount;
         this.type = type;
         this.category = category;
@@ -27,6 +35,14 @@ public class TransactionResponse {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
     }
 
     public BigDecimal getAmount() {
@@ -67,6 +83,7 @@ public class TransactionResponse {
         if (o == null || getClass() != o.getClass()) return false;
         TransactionResponse that = (TransactionResponse) o;
         return Objects.equals(id, that.id) &&
+               Objects.equals(orderId, that.orderId) &&
                Objects.equals(amount, that.amount) &&
                Objects.equals(type, that.type) &&
                Objects.equals(category, that.category) &&
@@ -75,6 +92,6 @@ public class TransactionResponse {
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, amount, type, category, description);
+        return Objects.hash(id, orderId, amount, type, category, description);
     }
 } 
