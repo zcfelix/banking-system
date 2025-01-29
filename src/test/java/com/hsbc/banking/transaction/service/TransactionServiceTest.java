@@ -6,6 +6,7 @@ import com.hsbc.banking.transaction.dto.UpdateTransactionRequest;
 import com.hsbc.banking.transaction.exception.DuplicateTransactionException;
 import com.hsbc.banking.transaction.exception.InsufficientBalanceException;
 import com.hsbc.banking.transaction.exception.TransactionNotFoundException;
+import com.hsbc.banking.transaction.exception.ConcurrentUpdateException;
 import com.hsbc.banking.transaction.model.AuditLog;
 import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.model.TransactionType;
@@ -254,5 +255,63 @@ class TransactionServiceTest {
             verify(transactionRepository, never()).update(any());
         }
 
+        @Test
+        void should_throw_exception_when_concurrent_update_occurs() {
+            // Given
+            Long transactionId = 1L;
+            when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(mockTransaction));
+            when(transactionRepository.update(any(Transaction.class)))
+                    .thenThrow(new ConcurrentUpdateException(Map.of(
+                            "transactionId", transactionId,
+                            "message", "Transaction was updated by another user",
+                            "currentVersion", 1L,
+                            "requestVersion", 0L
+                    )));
+
+            // When/Then
+            assertThatThrownBy(() -> 
+                transactionService.updateTransaction(transactionId, 
+                    new UpdateTransactionRequest(TransactionCategory.SHOPPING.name(), "Updated description")))
+                .isInstanceOf(ConcurrentUpdateException.class)
+                .satisfies(thrown -> {
+                    ConcurrentUpdateException ex = (ConcurrentUpdateException) thrown;
+                    assertThat(ex.getData())
+                            .containsEntry("transactionId", transactionId)
+                            .containsEntry("message", "Transaction was updated by another user")
+                            .containsEntry("currentVersion", 1L)
+                            .containsEntry("requestVersion", 0L);
+                });
+
+            verify(transactionRepository, times(3)).update(any(Transaction.class));
+        }
+
+        @Test
+        void should_retry_and_succeed_on_concurrent_update() {
+            // Given
+            when(transactionRepository.findById(mockTransaction.getId())).thenReturn(Optional.of(mockTransaction));
+
+            // Thr first two calls will throw ConcurrentUpdateException and the third call will succeed
+            when(transactionRepository.update(any(Transaction.class)))
+                    .thenThrow(new ConcurrentUpdateException(Map.of(
+                            "transactionId", mockTransaction.getId(),
+                            "message", "Transaction was updated by another user"
+                    )))
+                    .thenThrow(new ConcurrentUpdateException(Map.of(
+                            "transactionId", mockTransaction.getId(),
+                            "message", "Transaction was updated by another user"
+                    )))
+                    .thenReturn(mockTransaction);
+
+            // When
+            Transaction result = transactionService.updateTransaction(mockTransaction.getId(),
+                    new UpdateTransactionRequest(TransactionCategory.SHOPPING.name(), "Updated description"));
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(mockTransaction.getId());
+            assertThat(result.getCategory()).isEqualTo(TransactionCategory.SHOPPING);
+            assertThat(result.getDescription()).isEqualTo("Updated description");
+            verify(transactionRepository, times(3)).update(any(Transaction.class));
+        }
     }
 }

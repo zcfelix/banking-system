@@ -2,6 +2,7 @@ package com.hsbc.banking.transaction.service;
 
 import com.hsbc.banking.transaction.dto.CreateTransactionRequest;
 import com.hsbc.banking.transaction.dto.UpdateTransactionRequest;
+import com.hsbc.banking.transaction.exception.ConcurrentUpdateException;
 import com.hsbc.banking.transaction.exception.InsufficientBalanceException;
 import com.hsbc.banking.transaction.exception.InvalidTransactionException;
 import com.hsbc.banking.transaction.exception.TransactionNotFoundException;
@@ -79,51 +80,71 @@ public class TransactionService {
     }
 
     public Transaction updateTransaction(Long id, UpdateTransactionRequest request) {
-        // Find and validate transaction exists
-        Transaction transaction = transactionRepository.findById(id)
-                .orElseThrow(() -> new TransactionNotFoundException(id));
+        int maxRetries = 3;
+        int retryCount = 0;
+        
+        while (retryCount < maxRetries) {
+            try {
+                Transaction transaction = transactionRepository.findById(id)
+                        .orElseThrow(() -> new TransactionNotFoundException(id));
 
-        // Validate category
-        try {
-            TransactionCategory.fromString(request.category());
-        } catch (IllegalArgumentException e) {
-            throw new InvalidTransactionException(Map.of(
-                    "errors", List.of("Invalid transaction category. Valid categories are: " + 
-                            java.util.Arrays.toString(TransactionCategory.values()))
-            ));
+                // Validate category
+                try {
+                    TransactionCategory.fromString(request.category());
+                } catch (IllegalArgumentException e) {
+                    throw new InvalidTransactionException(Map.of(
+                            "errors", List.of("Invalid transaction category. Valid categories are: " + 
+                                    java.util.Arrays.toString(TransactionCategory.values()))
+                    ));
+                }
+
+                // Record the old state
+                String oldState;
+                try {
+                    oldState = objectMapper.writeValueAsString(transaction);
+                } catch (Exception e) {
+                    oldState = "Failed to serialize old state: " + e.getMessage();
+                }
+
+                // Only update category and description
+                transaction.setCategory(TransactionCategory.fromString(request.category()));
+                transaction.setDescription(request.description());
+                transaction.setUpdatedAt(LocalDateTime.now());
+
+                // Do the update
+                Transaction updatedTransaction = transactionRepository.update(transaction);
+
+                // Record the audit log only after the update is successful
+                String newState;
+                try {
+                    newState = objectMapper.writeValueAsString(updatedTransaction);
+                } catch (Exception e) {
+                    newState = "Failed to serialize new state: " + e.getMessage();
+                }
+
+                auditLogRepository.save(new AuditLog(
+                        "UPDATE",
+                        "Transaction",
+                        String.valueOf(id),
+                        "Updated transaction from: " + oldState + " to: " + newState
+                ));
+
+                return updatedTransaction;
+            } catch (ConcurrentUpdateException e) {
+                retryCount++;
+                if (retryCount >= maxRetries) {
+                    throw e;
+                }
+                // Add some random delay before retrying
+                try {
+                    Thread.sleep((long) (Math.random() * 100));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException("Thread interrupted while retrying update", ie);
+                }
+            }
         }
-
-        // Create audit log before update
-        String oldState;
-        try {
-            oldState = objectMapper.writeValueAsString(transaction);
-        } catch (Exception e) {
-            oldState = "Failed to serialize old state: " + e.getMessage();
-        }
-
-        // Update allowed fields
-        transaction.setCategory(TransactionCategory.fromString(request.category()));
-        transaction.setDescription(request.description());
-        transaction.setUpdatedAt(LocalDateTime.now());
-
-        // Save updated transaction
-        Transaction updatedTransaction = transactionRepository.update(transaction);
-
-        // Create audit log after update
-        String newState;
-        try {
-            newState = objectMapper.writeValueAsString(updatedTransaction);
-        } catch (Exception e) {
-            newState = "Failed to serialize new state: " + e.getMessage();
-        }
-
-        auditLogRepository.save(new AuditLog(
-                "UPDATE",
-                "Transaction",
-                String.valueOf(id),
-                "Updated transaction from: " + oldState + " to: " + newState
-        ));
-
-        return updatedTransaction;
+        
+        throw new IllegalStateException("Should never reach here");
     }
 } 

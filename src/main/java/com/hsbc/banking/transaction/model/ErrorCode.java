@@ -5,6 +5,7 @@ public enum ErrorCode {
     INVALID_TRANSACTION(400),
     INVALID_REQUEST(400),
     INSUFFICIENT_BALANCE(400),
+    CONCURRENT_UPDATE_CONFLICT(409),
     TRANSACTION_NOT_FOUND(404);
 
     private final int code;

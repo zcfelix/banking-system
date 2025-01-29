@@ -2,6 +2,8 @@ package com.hsbc.banking.transaction.repository;
 
 import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.exception.DuplicateTransactionException;
+import com.hsbc.banking.transaction.exception.TransactionNotFoundException;
+import com.hsbc.banking.transaction.exception.ConcurrentUpdateException;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
@@ -37,7 +39,24 @@ public class InMemoryTransactionRepository implements TransactionRepository {
     }
 
     @Override
-    public Transaction update(Transaction transaction) {
+    public synchronized Transaction update(Transaction transaction) {
+        Transaction existingTransaction = transactions.get(transaction.getId());
+        if (existingTransaction == null) {
+            throw new TransactionNotFoundException(transaction.getId());
+        }
+
+        // check if the version of the existing transaction matches the version of the request
+        if (!existingTransaction.getVersion().equals(transaction.getVersion())) {
+            throw new ConcurrentUpdateException(Map.of(
+                "transactionId", transaction.getId(),
+                "message", "Transaction was updated by another user",
+                "currentVersion", existingTransaction.getVersion(),
+                "requestVersion", transaction.getVersion()
+            ));
+        }
+
+        // update the transaction and increment the version
+        transaction.incrementVersion();
         transactions.put(transaction.getId(), transaction);
         return transaction;
     }

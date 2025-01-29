@@ -22,6 +22,7 @@ public class Transaction {
     private String description;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private Long version;
 
     private Transaction(String orderId, String accountId, BigDecimal amount, TransactionType type, TransactionCategory category, String description) {
         this.orderId = orderId;
@@ -32,6 +33,7 @@ public class Transaction {
         this.description = description;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = this.createdAt;
+        this.version = 0L;
     }
 
     public static Transaction create(String orderId, String accountId, BigDecimal amount, String type, String category, String description) {
@@ -175,6 +177,18 @@ public class Transaction {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
+    }
+
+    public void incrementVersion() {
+        this.version = this.version + 1;
     }
 
     @Override
