@@ -13,6 +13,11 @@ import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.model.TransactionCategory;
 import com.hsbc.banking.transaction.repository.AuditLogRepository;
 import com.hsbc.banking.transaction.repository.TransactionRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -21,6 +26,8 @@ import java.util.Map;
 
 @Service
 public class TransactionService {
+    private static final Logger logger = LoggerFactory.getLogger(TransactionService.class);
+    
     private final TransactionRepository transactionRepository;
     private final ExternalAccountService externalAccountService;
     private final AuditLogRepository auditLogRepository;
@@ -36,7 +43,16 @@ public class TransactionService {
         this.objectMapper = objectMapper;
     }
 
+    @Cacheable(value = "transactions", key = "#id")
+    public Transaction getTransaction(Long id) {
+        logger.info("Fetching transaction from repository with id: {}", id);
+        return transactionRepository.findById(id)
+                .orElseThrow(() -> new TransactionNotFoundException(id));
+    }
+
+    @CachePut(value = "transactions", key = "#result.id")
     public Transaction createTransaction(CreateTransactionRequest request) {
+        logger.info("Creating new transaction and updating cache");
         Transaction transaction = Transaction.create(
                 request.orderId(),
                 request.accountId(),
@@ -58,7 +74,9 @@ public class TransactionService {
         return transactionRepository.save(transaction);
     }
 
+    @CacheEvict(value = "transactions", key = "#id")
     public void deleteTransaction(Long id) {
+        logger.info("Deleting transaction from cache and repository with id: {}", id);
         Transaction transaction = transactionRepository.findById(id)
                 .orElseThrow(() -> new TransactionNotFoundException(id));
 
@@ -80,7 +98,9 @@ public class TransactionService {
         transactionRepository.deleteById(id);
     }
 
+    @CachePut(value = "transactions", key = "#id")
     public Transaction updateTransaction(Long id, UpdateTransactionRequest request) {
+        logger.info("Updating transaction in cache and repository with id: {}", id);
         int maxRetries = 3;
         int retryCount = 0;
         
@@ -149,7 +169,9 @@ public class TransactionService {
         throw new IllegalStateException("Should never reach here");
     }
 
+    @Cacheable(value = "transactionPages", key = "#pageNumber + '-' + #pageSize")
     public Page<Transaction> listTransactions(int pageNumber, int pageSize) {
+        logger.info("Fetching transaction page from repository: page={}, size={}", pageNumber, pageSize);
         // Validate pageNumber and pageSize, return empty list if invalid
         if (pageNumber < 1 || pageSize <= 0) {
             return Page.of(List.of(), pageNumber, pageSize, 0);

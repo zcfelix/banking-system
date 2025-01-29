@@ -115,4 +115,20 @@ public class TransactionController {
 
         return ResponseEntity.ok(new PageResponse<>(content, page.totalElements()));
     }
+
+    @Operation(summary = "Get a transaction by ID",
+            description = "Returns a transaction by its ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved transaction"),
+            @ApiResponse(responseCode = "404", description = "Transaction not found", content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorDetail.class)
+            ))
+    })
+    @GetMapping("/{id}")
+    public ResponseEntity<TransactionResponse> getTransaction(
+            @Parameter(description = "Transaction ID", required = true)
+            @PathVariable Long id) {
+        return ResponseEntity.ok(TransactionResponse.from(transactionService.getTransaction(id)));
+    }
 } 
