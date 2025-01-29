@@ -15,11 +15,12 @@ public class TransactionService {
     }
 
     public Transaction createTransaction(String orderId,
-                                         BigDecimal amount,
-                                         String type,
-                                         String category,
-                                         String description) {
-        Transaction transaction = new Transaction(orderId, amount, type, category, description);
+                                      String accountId,
+                                      BigDecimal amount,
+                                      String type,
+                                      String category,
+                                      String description) {
+        Transaction transaction = new Transaction(orderId, accountId, amount, type, category, description);
         return transactionRepository.save(transaction);
     }
 } 

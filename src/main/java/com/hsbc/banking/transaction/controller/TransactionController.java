@@ -21,6 +21,7 @@ public class TransactionController {
     public ResponseEntity<TransactionResponse> createTransaction(@RequestBody CreateTransactionRequest request) {
         Transaction transaction = transactionService.createTransaction(
                 request.orderId(),
+                request.accountId(),
                 request.amount(),
                 request.type(),
                 request.category(),
@@ -29,6 +30,7 @@ public class TransactionController {
         TransactionResponse response = new TransactionResponse(
                 transaction.getId(),
                 transaction.getOrderId(),
+                transaction.getAccountId(),
                 transaction.getAmount(),
                 transaction.getType(),
                 transaction.getCategory(),

@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 public record TransactionResponse(
     Long id,
     String orderId,
+    String accountId,
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "#.00")
     BigDecimal amount,
     String type,

@@ -35,6 +35,7 @@ public class TransactionControllerTest {
     void setUp() {
         Transaction mockTransaction = new Transaction(
                 "ORD-001",
+                "ACC-001",
                 new BigDecimal("100.00"),
                 "Credit",
                 "Salary",
@@ -43,6 +44,7 @@ public class TransactionControllerTest {
         mockTransaction.setId(1L);
 
         when(transactionService.createTransaction(
+                any(String.class),
                 any(String.class),
                 any(BigDecimal.class),
                 any(String.class),
@@ -56,6 +58,7 @@ public class TransactionControllerTest {
         String transactionJson = """
                 {
                     "orderId":"ORD-001",
+                    "accountId":"ACC-001",
                     "amount":100.00,
                     "type":"Credit",
                     "category":"Salary",
@@ -69,6 +72,7 @@ public class TransactionControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.orderId").value("ORD-001"))
+                .andExpect(jsonPath("$.accountId").value("ACC-001"))
                 .andExpect(jsonPath("$.amount").value("100.00"))
                 .andExpect(jsonPath("$.type").value("Credit"))
                 .andExpect(jsonPath("$.category").value("Salary"))
@@ -78,6 +82,7 @@ public class TransactionControllerTest {
     @Test
     void should_return_409_when_transaction_is_duplicate() throws Exception {
         when(transactionService.createTransaction(
+                any(String.class),
                 any(String.class),
                 any(BigDecimal.class),
                 any(String.class),
@@ -92,6 +97,7 @@ public class TransactionControllerTest {
         String transactionJson = """
                 {
                     "orderId":"ORD-001",
+                    "accountId":"ACC-001",
                     "amount":100.00,
                     "type":"Credit",
                     "category":"Salary",

@@ -6,13 +6,15 @@ import java.util.Objects;
 public class Transaction {
     private Long id;
     private String orderId;
+    private String accountId;
     private BigDecimal amount;
     private String type;
     private String category;
     private String description;
 
-    public Transaction(String orderId, BigDecimal amount, String type, String category, String description) {
+    public Transaction(String orderId, String accountId, BigDecimal amount, String type, String category, String description) {
         this.orderId = orderId;
+        this.accountId = accountId;
         this.amount = amount;
         this.type = type;
         this.category = category;
@@ -34,6 +36,14 @@ public class Transaction {
 
     public void setOrderId(String orderId) {
         this.orderId = orderId;
+    }
+
+    public String getAccountId() {
+        return accountId;
+    }
+
+    public void setAccountId(String accountId) {
+        this.accountId = accountId;
     }
 
     public BigDecimal getAmount() {
