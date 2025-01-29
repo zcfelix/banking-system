@@ -4,10 +4,11 @@ import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.model.TransactionCategory;
 import com.hsbc.banking.transaction.model.TransactionType;
 import com.hsbc.banking.transaction.repository.TransactionRepository;
-import com.hsbc.banking.transaction.service.ExternalAccountService;
-import com.hsbc.banking.transaction.model.AuditLog;
 import com.hsbc.banking.transaction.repository.AuditLogRepository;
+import com.hsbc.banking.transaction.model.AuditLog;
+import com.hsbc.banking.transaction.service.ExternalAccountService;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -40,11 +41,11 @@ class TransactionIntegrationTest {
     @Autowired
     private TransactionRepository transactionRepository;
 
-    @MockBean
-    private ExternalAccountService externalAccountService;
-
     @Autowired
     private AuditLogRepository auditLogRepository;
+
+    @MockBean
+    private ExternalAccountService externalAccountService;
 
     private static final String CREATE_CREDIT_TRANSACTION_REQUEST = """
             {
@@ -73,115 +74,121 @@ class TransactionIntegrationTest {
         transactionRepository.clear();
     }
 
-    @Test
-    void should_create_credit_transaction_successfully() throws Exception {
-        // When
-        LocalDateTime beforeCreation = LocalDateTime.now();
-        mockMvc.perform(post("/transactions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(CREATE_CREDIT_TRANSACTION_REQUEST))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.orderId").value("ORD-123456"))
-                .andExpect(jsonPath("$.accountId").value("ACC-123456"))
-                .andExpect(jsonPath("$.amount").value("100.00"))
-                .andExpect(jsonPath("$.type").value("CREDIT"))
-                .andExpect(jsonPath("$.category").value("SALARY"))
-                .andExpect(jsonPath("$.description").value("Monthly salary payment"))
-                .andExpect(jsonPath("$.createdAt").isNotEmpty());
-        LocalDateTime afterCreation = LocalDateTime.now();
+    @Nested
+    class CreateTransaction {
+        @Test
+        void should_create_credit_transaction_successfully() throws Exception {
+            // When
+            LocalDateTime beforeCreation = LocalDateTime.now();
+            mockMvc.perform(post("/transactions")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(CREATE_CREDIT_TRANSACTION_REQUEST))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.orderId").value("ORD-123456"))
+                    .andExpect(jsonPath("$.accountId").value("ACC-123456"))
+                    .andExpect(jsonPath("$.amount").value("100.00"))
+                    .andExpect(jsonPath("$.type").value("CREDIT"))
+                    .andExpect(jsonPath("$.category").value("SALARY"))
+                    .andExpect(jsonPath("$.description").value("Monthly salary payment"))
+                    .andExpect(jsonPath("$.createdAt").isNotEmpty());
+            LocalDateTime afterCreation = LocalDateTime.now();
 
-        // Then
-        Transaction savedTransaction = transactionRepository.findByOrderId("ORD-123456")
-                .orElseThrow(() -> new AssertionError("Transaction not found"));
-        assertThat(savedTransaction.getCreatedAt()).isAfter(beforeCreation).isBefore(afterCreation);
+            // Then
+            Transaction savedTransaction = transactionRepository.findByOrderId("ORD-123456")
+                    .orElseThrow(() -> new AssertionError("Transaction not found"));
+            assertThat(savedTransaction.getCreatedAt()).isAfter(beforeCreation).isBefore(afterCreation);
+        }
+
+        @Test
+        void should_create_debit_transaction_when_balance_is_sufficient() throws Exception {
+            // Given
+            when(externalAccountService.hasSufficientBalance(eq("ACC-123456"), any(BigDecimal.class)))
+                    .thenReturn(true);
+
+            // When
+            mockMvc.perform(post("/transactions")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(CREATE_DEBIT_TRANSACTION_REQUEST))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.orderId").value("ORD-123456"))
+                    .andExpect(jsonPath("$.accountId").value("ACC-123456"))
+                    .andExpect(jsonPath("$.amount").value("-100.00"))
+                    .andExpect(jsonPath("$.type").value("DEBIT"))
+                    .andExpect(jsonPath("$.category").value("SHOPPING"))
+                    .andExpect(jsonPath("$.description").value("Shopping payment"))
+                    .andExpect(jsonPath("$.createdAt").isNotEmpty());
+
+            // Then
+            verify(externalAccountService).hasSufficientBalance(eq("ACC-123456"), eq(new BigDecimal("-100.00")));
+
+            Transaction savedTransaction = transactionRepository.findByOrderId("ORD-123456")
+                    .orElseThrow(() -> new AssertionError("Transaction not found"));
+
+            assertThat(savedTransaction.getOrderId()).isEqualTo("ORD-123456");
+            assertThat(savedTransaction.getAccountId()).isEqualTo("ACC-123456");
+            assertThat(savedTransaction.getAmount()).isEqualByComparingTo(new BigDecimal("-100.00"));
+            assertThat(savedTransaction.getType()).isEqualTo(TransactionType.DEBIT);
+            assertThat(savedTransaction.getCategory()).isEqualTo(TransactionCategory.SHOPPING);
+            assertThat(savedTransaction.getDescription()).isEqualTo("Shopping payment");
+        }
+
+        @Test
+        void should_reject_transaction_when_insufficient_balance() throws Exception {
+            // Given
+            when(externalAccountService.hasSufficientBalance(eq("ACC-123456"), any(BigDecimal.class)))
+                    .thenReturn(false);
+
+            // When/Then
+            mockMvc.perform(post("/transactions")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(CREATE_DEBIT_TRANSACTION_REQUEST))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.code").value("INSUFFICIENT_BALANCE"))
+                    .andExpect(jsonPath("$.data.accountId").value("ACC-123456"))
+                    .andExpect(jsonPath("$.data.message").value("Insufficient balance for transaction amount: -100.00"));
+
+            // Verify no transaction was saved
+            assertThat(transactionRepository.findByOrderId("ORD-123456")).isEmpty();
+        }
     }
 
-    @Test
-    void should_create_debit_transaction_when_balance_is_sufficient() throws Exception {
-        // Given
-        when(externalAccountService.hasSufficientBalance(eq("ACC-123456"), any(BigDecimal.class)))
-                .thenReturn(true);
+    @Nested
+    class DeleteTransaction {
+        @Test
+        void should_delete_transaction_successfully() throws Exception {
+            // Given - Create a transaction first
+            mockMvc.perform(post("/transactions")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(CREATE_CREDIT_TRANSACTION_REQUEST))
+                    .andExpect(status().isCreated());
 
-        // When
-        mockMvc.perform(post("/transactions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(CREATE_DEBIT_TRANSACTION_REQUEST))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.orderId").value("ORD-123456"))
-                .andExpect(jsonPath("$.accountId").value("ACC-123456"))
-                .andExpect(jsonPath("$.amount").value("-100.00"))
-                .andExpect(jsonPath("$.type").value("DEBIT"))
-                .andExpect(jsonPath("$.category").value("SHOPPING"))
-                .andExpect(jsonPath("$.description").value("Shopping payment"))
-                .andExpect(jsonPath("$.createdAt").isNotEmpty());
+            Transaction savedTransaction = transactionRepository.findByOrderId("ORD-123456")
+                    .orElseThrow(() -> new AssertionError("Transaction not found"));
 
-        // Then
-        verify(externalAccountService).hasSufficientBalance(eq("ACC-123456"), eq(new BigDecimal("-100.00")));
+            // When
+            mockMvc.perform(delete("/transactions/{id}", savedTransaction.getId()))
+                    .andExpect(status().isNoContent());
 
-        Transaction savedTransaction = transactionRepository.findByOrderId("ORD-123456")
-                .orElseThrow(() -> new AssertionError("Transaction not found"));
+            // Then
+            assertThat(transactionRepository.findById(savedTransaction.getId())).isEmpty();
+            
+            // Verify audit log
+            List<AuditLog> auditLogs = auditLogRepository.findByEntityTypeAndEntityId(
+                    "Transaction", String.valueOf(savedTransaction.getId()));
+            assertThat(auditLogs).hasSize(1);
+            AuditLog auditLog = auditLogs.get(0);
+            assertThat(auditLog.getOperation()).isEqualTo("DELETE");
+            assertThat(auditLog.getDetails()).contains("ORD-123456");
+        }
 
-        assertThat(savedTransaction.getOrderId()).isEqualTo("ORD-123456");
-        assertThat(savedTransaction.getAccountId()).isEqualTo("ACC-123456");
-        assertThat(savedTransaction.getAmount()).isEqualByComparingTo(new BigDecimal("-100.00"));
-        assertThat(savedTransaction.getType()).isEqualTo(TransactionType.DEBIT);
-        assertThat(savedTransaction.getCategory()).isEqualTo(TransactionCategory.SHOPPING);
-        assertThat(savedTransaction.getDescription()).isEqualTo("Shopping payment");
-    }
-
-    @Test
-    void should_reject_transaction_when_insufficient_balance() throws Exception {
-        // Given
-        when(externalAccountService.hasSufficientBalance(eq("ACC-123456"), any(BigDecimal.class)))
-                .thenReturn(false);
-
-        // When/Then
-        mockMvc.perform(post("/transactions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(CREATE_DEBIT_TRANSACTION_REQUEST))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INSUFFICIENT_BALANCE"))
-                .andExpect(jsonPath("$.data.accountId").value("ACC-123456"))
-                .andExpect(jsonPath("$.data.message").value("Insufficient balance for transaction amount: -100.00"));
-
-        // Verify no transaction was saved
-        assertThat(transactionRepository.findByOrderId("ORD-123456")).isEmpty();
-    }
-
-    @Test
-    void should_delete_transaction_successfully() throws Exception {
-        // Given - Create a transaction first
-        mockMvc.perform(post("/transactions")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(CREATE_CREDIT_TRANSACTION_REQUEST))
-                .andExpect(status().isCreated());
-
-        Transaction savedTransaction = transactionRepository.findByOrderId("ORD-123456")
-                .orElseThrow(() -> new AssertionError("Transaction not found"));
-
-        // When
-        mockMvc.perform(delete("/transactions/{id}", savedTransaction.getId()))
-                .andExpect(status().isNoContent());
-
-        // Then
-        assertThat(transactionRepository.findById(savedTransaction.getId())).isEmpty();
-        
-        // Verify audit log
-        List<AuditLog> auditLogs = auditLogRepository.findByEntityTypeAndEntityId(
-                "Transaction", String.valueOf(savedTransaction.getId()));
-        assertThat(auditLogs).hasSize(1);
-        AuditLog auditLog = auditLogs.get(0);
-        assertThat(auditLog.getOperation()).isEqualTo("DELETE");
-        assertThat(auditLog.getDetails()).contains("ORD-123456");
-    }
-
-    @Test
-    void should_return_404_when_deleting_non_existent_transaction() throws Exception {
-        // When/Then
-        mockMvc.perform(delete("/transactions/{id}", 999))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("TRANSACTION_NOT_FOUND"))
-                .andExpect(jsonPath("$.data.transactionId").value(999))
-                .andExpect(jsonPath("$.data.message").value("Transaction not found with ID: 999"));
+        @Test
+        void should_return_404_when_deleting_non_existent_transaction() throws Exception {
+            // When/Then
+            mockMvc.perform(delete("/transactions/{id}", 999))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("TRANSACTION_NOT_FOUND"))
+                    .andExpect(jsonPath("$.data.transactionId").value(999))
+                    .andExpect(jsonPath("$.data.message").value("Transaction not found with ID: 999"));
+        }
     }
 }  
