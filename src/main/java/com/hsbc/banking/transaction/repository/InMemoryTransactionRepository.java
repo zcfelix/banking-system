@@ -8,39 +8,40 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Repository
 public class InMemoryTransactionRepository implements TransactionRepository {
-    private final List<Transaction> transactions = new ArrayList<>();
+    private final Map<Long, Transaction> transactions = new ConcurrentHashMap<>();
+    private final Map<String, Transaction> orderIdIndex = new ConcurrentHashMap<>();
     private final AtomicLong idGenerator = new AtomicLong(1);
 
     @Override
     public Transaction save(Transaction transaction) {
         checkDuplicate(transaction);
-        transaction.setId(idGenerator.getAndIncrement());
-        transactions.add(transaction);
+        
+        Long id = idGenerator.getAndIncrement();
+        transaction.setId(id);
+        
+        transactions.put(id, transaction);
+        orderIdIndex.put(transaction.getOrderId(), transaction);
+        
         return transaction;
     }
 
-
     @Override
     public Optional<Transaction> findById(Long id) {
-        return transactions.stream()
-                .filter(t -> t.getId().equals(id))
-                .findFirst();
+        return Optional.ofNullable(transactions.get(id));
     }
 
     @Override
     public List<Transaction> findAll() {
-        return new ArrayList<>(transactions);
+        return new ArrayList<>(transactions.values());
     }
 
     private void checkDuplicate(Transaction transaction) {
-        boolean isDuplicate = transactions.stream()
-                .anyMatch(t -> t.getOrderId().equals(transaction.getOrderId()));
-
-        if (isDuplicate) {
+        if (orderIdIndex.containsKey(transaction.getOrderId())) {
             throw new DuplicateTransactionException(
                     Map.of("orderId", transaction.getOrderId(),
                             "message", "Transaction with order ID already exists")
