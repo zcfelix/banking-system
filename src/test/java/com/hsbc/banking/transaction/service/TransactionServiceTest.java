@@ -49,7 +49,7 @@ class TransactionServiceTest {
 
         // When
         Transaction result = transactionService.createTransaction(
-            ORDER_ID, ACCOUNT_ID, AMOUNT, TYPE, CATEGORY, DESCRIPTION
+            ORDER_ID, ACCOUNT_ID, AMOUNT, TYPE.toString(), CATEGORY, DESCRIPTION
         );
 
         // Then
@@ -76,7 +76,7 @@ class TransactionServiceTest {
         // When/Then
         assertThatThrownBy(() -> 
             transactionService.createTransaction(
-                ORDER_ID, ACCOUNT_ID, AMOUNT, TYPE, CATEGORY, DESCRIPTION
+                ORDER_ID, ACCOUNT_ID, AMOUNT, TYPE.toString(), CATEGORY, DESCRIPTION
             ))
             .isInstanceOf(DuplicateTransactionException.class)
             .satisfies(thrown -> {

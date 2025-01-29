@@ -16,12 +16,23 @@ public class TransactionService {
     }
 
     public Transaction createTransaction(String orderId,
-                                      String accountId,
-                                      BigDecimal amount,
-                                      TransactionType type,
-                                      String category,
-                                      String description) {
-        Transaction transaction = new Transaction(orderId, accountId, amount, type, category, description);
+                                         String accountId,
+                                         BigDecimal amount,
+                                         String type,
+                                         String category,
+                                         String description) {
+        validateTransaction(orderId, accountId, amount, type, category, description);
+        Transaction transaction = new Transaction(orderId, accountId, amount, TransactionType.valueOf(type), category, description);
         return transactionRepository.save(transaction);
+    }
+
+    private void validateTransaction(String orderId,
+                                     String accountId,
+                                     BigDecimal amount,
+                                     String type,
+                                     String category,
+                                     String description) {
+        // check if the type is valid
+        TransactionType.valueOf(type.toUpperCase());
     }
 } 

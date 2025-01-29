@@ -4,6 +4,7 @@ import com.hsbc.banking.transaction.dto.CreateTransactionRequest;
 import com.hsbc.banking.transaction.dto.TransactionResponse;
 import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.service.TransactionService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,7 @@ public class TransactionController {
     }
 
     @PostMapping
-    public ResponseEntity<TransactionResponse> createTransaction(@RequestBody CreateTransactionRequest request) {
+    public ResponseEntity<TransactionResponse> createTransaction(@Valid @RequestBody CreateTransactionRequest request) {
         Transaction transaction = transactionService.createTransaction(
                 request.orderId(),
                 request.accountId(),
