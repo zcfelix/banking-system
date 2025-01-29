@@ -308,6 +308,50 @@ class TransactionControllerTest {
         }
     }
 
+    @Nested
+    class GetTransaction {
+        @Test
+        void should_get_transaction_successfully() throws Exception {
+            // Given
+            Long transactionId = 1L;
+            when(transactionService.getTransaction(transactionId)).thenReturn(mockTransaction);
+
+            // When & Then
+            mockMvc.perform(get("/transactions/{id}", transactionId))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(transactionId))
+                    .andExpect(jsonPath("$.orderId").value("ORD-012345"))
+                    .andExpect(jsonPath("$.accountId").value("ACC-012345"))
+                    .andExpect(jsonPath("$.amount").value("100.00"))
+                    .andExpect(jsonPath("$.type").value("CREDIT"))
+                    .andExpect(jsonPath("$.category").value("SALARY"))
+                    .andExpect(jsonPath("$.description").value("Monthly salary"))
+                    .andExpect(jsonPath("$.createdAt").exists())
+                    .andExpect(jsonPath("$.updatedAt").exists());
+
+            // Verify service is called
+            verify(transactionService).getTransaction(transactionId);
+        }
+
+        @Test
+        void should_return_404_when_getting_non_existent_transaction() throws Exception {
+            // Given
+            Long transactionId = 999L;
+            when(transactionService.getTransaction(transactionId))
+                    .thenThrow(new TransactionNotFoundException(transactionId));
+
+            // When & Then
+            mockMvc.perform(get("/transactions/{id}", transactionId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("TRANSACTION_NOT_FOUND"))
+                    .andExpect(jsonPath("$.data.transactionId").value(transactionId))
+                    .andExpect(jsonPath("$.data.message").value("Transaction not found with ID: " + transactionId));
+
+            // Verify service is called
+            verify(transactionService).getTransaction(transactionId);
+        }
+    }
+
     private Transaction createMockTransaction() {
         Transaction transaction = Transaction.create(
                 "ORD-012345",

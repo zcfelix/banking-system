@@ -404,4 +404,52 @@ class TransactionServiceTest {
         }
 
     }
+
+    @Nested
+    class GetTransaction {
+        @Test
+        void should_get_transaction_successfully() {
+            // Given
+            Long transactionId = 1L;
+            when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(mockTransaction));
+
+            // When
+            Transaction result = transactionService.getTransaction(transactionId);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(transactionId);
+            assertThat(result.getOrderId()).isEqualTo(ORDER_ID);
+            assertThat(result.getAccountId()).isEqualTo(ACCOUNT_ID);
+            assertThat(result.getAmount()).isEqualTo(AMOUNT);
+            assertThat(result.getType()).isEqualTo(TransactionType.DEBIT);
+            assertThat(result.getCategory()).isEqualTo(TransactionCategory.SALARY);
+            assertThat(result.getDescription()).isEqualTo(DESCRIPTION);
+            assertThat(result.getCreatedAt()).isNotNull();
+            assertThat(result.getUpdatedAt()).isNotNull();
+
+            // Verify repository is called
+            verify(transactionRepository).findById(transactionId);
+        }
+
+        @Test
+        void should_throw_exception_when_getting_non_existent_transaction() {
+            // Given
+            Long transactionId = 999L;
+            when(transactionRepository.findById(transactionId)).thenReturn(Optional.empty());
+
+            // When/Then
+            assertThatThrownBy(() -> transactionService.getTransaction(transactionId))
+                    .isInstanceOf(TransactionNotFoundException.class)
+                    .satisfies(thrown -> {
+                        TransactionNotFoundException ex = (TransactionNotFoundException) thrown;
+                        assertThat(ex.getData())
+                                .containsEntry("transactionId", transactionId)
+                                .containsEntry("message", "Transaction not found with ID: " + transactionId);
+                    });
+
+            // Verify repository is called
+            verify(transactionRepository).findById(transactionId);
+        }
+    }
 }

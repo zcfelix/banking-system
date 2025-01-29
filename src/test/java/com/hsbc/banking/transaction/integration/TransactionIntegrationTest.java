@@ -391,4 +391,42 @@ class TransactionIntegrationTest {
                     .andExpect(jsonPath("$.totalSize").value(5));
         }
     }
+
+    @Nested
+    class GetTransaction {
+        @Test
+        void should_get_transaction_successfully() throws Exception {
+            // Given - Create a transaction first
+            mockMvc.perform(post("/transactions")
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(CREATE_CREDIT_TRANSACTION_REQUEST))
+                    .andExpect(status().isCreated());
+
+            Transaction savedTransaction = transactionRepository.findByOrderId("ORD-123456")
+                    .orElseThrow(() -> new AssertionError("Transaction not found"));
+
+            // When/Then
+            mockMvc.perform(get("/transactions/{id}", savedTransaction.getId()))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(savedTransaction.getId()))
+                    .andExpect(jsonPath("$.orderId").value("ORD-123456"))
+                    .andExpect(jsonPath("$.accountId").value("ACC-123456"))
+                    .andExpect(jsonPath("$.amount").value("100.00"))
+                    .andExpect(jsonPath("$.type").value("CREDIT"))
+                    .andExpect(jsonPath("$.category").value("SALARY"))
+                    .andExpect(jsonPath("$.description").value("Monthly salary payment"))
+                    .andExpect(jsonPath("$.createdAt").exists())
+                    .andExpect(jsonPath("$.updatedAt").exists());
+        }
+
+        @Test
+        void should_return_404_when_getting_non_existent_transaction() throws Exception {
+            // When/Then
+            mockMvc.perform(get("/transactions/{id}", 999))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("TRANSACTION_NOT_FOUND"))
+                    .andExpect(jsonPath("$.data.transactionId").value(999))
+                    .andExpect(jsonPath("$.data.message").value("Transaction not found with ID: 999"));
+        }
+    }
 }  
