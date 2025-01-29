@@ -1,21 +1,22 @@
 package com.hsbc.banking.transaction.repository;
 
-import com.hsbc.banking.transaction.model.Transaction;
+import com.hsbc.banking.transaction.exception.ConcurrentUpdateException;
 import com.hsbc.banking.transaction.exception.DuplicateTransactionException;
 import com.hsbc.banking.transaction.exception.TransactionNotFoundException;
-import com.hsbc.banking.transaction.exception.ConcurrentUpdateException;
+import com.hsbc.banking.transaction.model.Transaction;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 
 @Repository
 public class InMemoryTransactionRepository implements TransactionRepository {
-    private final Map<Long, Transaction> transactions = new ConcurrentHashMap<>();
+    private final ConcurrentSkipListMap<Long, Transaction> transactions = new ConcurrentSkipListMap<>();
     private final Map<String, Transaction> orderIdIndex = new ConcurrentHashMap<>();
     private final AtomicLong idGenerator = new AtomicLong(1);
 
@@ -72,8 +73,16 @@ public class InMemoryTransactionRepository implements TransactionRepository {
     }
 
     @Override
-    public List<Transaction> findAll() {
-        return new ArrayList<>(transactions.values());
+    public List<Transaction> findAll(int offset, int limit) {
+        return transactions.values().stream()
+                .skip(offset)
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public long count() {
+        return transactions.size();
     }
 
     @Override
@@ -91,5 +100,4 @@ public class InMemoryTransactionRepository implements TransactionRepository {
         orderIdIndex.clear();
         idGenerator.set(1);
     }
-
 }

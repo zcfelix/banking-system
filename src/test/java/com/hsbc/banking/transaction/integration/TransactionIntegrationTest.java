@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.hasSize;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -81,8 +82,8 @@ class TransactionIntegrationTest {
             // When
             LocalDateTime beforeCreation = LocalDateTime.now();
             mockMvc.perform(post("/transactions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(CREATE_CREDIT_TRANSACTION_REQUEST))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(CREATE_CREDIT_TRANSACTION_REQUEST))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.orderId").value("ORD-123456"))
                     .andExpect(jsonPath("$.accountId").value("ACC-123456"))
@@ -116,8 +117,8 @@ class TransactionIntegrationTest {
 
             // When
             mockMvc.perform(post("/transactions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(CREATE_DEBIT_TRANSACTION_REQUEST))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(CREATE_DEBIT_TRANSACTION_REQUEST))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.orderId").value("ORD-123456"))
                     .andExpect(jsonPath("$.accountId").value("ACC-123456"))
@@ -158,8 +159,8 @@ class TransactionIntegrationTest {
 
             // When/Then
             mockMvc.perform(post("/transactions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(CREATE_DEBIT_TRANSACTION_REQUEST))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(CREATE_DEBIT_TRANSACTION_REQUEST))
                     .andExpect(status().isBadRequest())
                     .andExpect(jsonPath("$.code").value("INSUFFICIENT_BALANCE"))
                     .andExpect(jsonPath("$.data.accountId").value("ACC-123456"))
@@ -176,8 +177,8 @@ class TransactionIntegrationTest {
         void should_delete_transaction_successfully() throws Exception {
             // Given - Create a transaction first
             mockMvc.perform(post("/transactions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(CREATE_CREDIT_TRANSACTION_REQUEST))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(CREATE_CREDIT_TRANSACTION_REQUEST))
                     .andExpect(status().isCreated());
 
             Transaction savedTransaction = transactionRepository.findByOrderId("ORD-123456")
@@ -189,7 +190,7 @@ class TransactionIntegrationTest {
 
             // Then
             assertThat(transactionRepository.findById(savedTransaction.getId())).isEmpty();
-            
+
             // Verify audit log - find the most recent DELETE operation
             List<AuditLog> auditLogs = auditLogRepository.findByEntityTypeAndEntityId(
                     "Transaction", String.valueOf(savedTransaction.getId()));
@@ -197,7 +198,7 @@ class TransactionIntegrationTest {
                     .filter(log -> "DELETE".equals(log.getOperation()))
                     .findFirst()
                     .orElseThrow(() -> new AssertionError("Delete audit log not found"));
-            
+
             assertThat(deleteLog.getOperation()).isEqualTo("DELETE");
             assertThat(deleteLog.getDetails()).contains("ORD-123456");
         }
@@ -230,8 +231,8 @@ class TransactionIntegrationTest {
         void should_update_transaction_successfully_and_ignore_immutable_fields() throws Exception {
             // Given - Create a transaction first
             mockMvc.perform(post("/transactions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(CREATE_CREDIT_TRANSACTION_REQUEST))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(CREATE_CREDIT_TRANSACTION_REQUEST))
                     .andExpect(status().isCreated());
 
             Transaction savedTransaction = transactionRepository.findByOrderId("ORD-123456")
@@ -241,8 +242,8 @@ class TransactionIntegrationTest {
 
             // When
             mockMvc.perform(put("/transactions/{id}", savedTransaction.getId())
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(UPDATE_TRANSACTION_REQUEST))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(UPDATE_TRANSACTION_REQUEST))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.id").value(savedTransaction.getId()))
                     .andExpect(jsonPath("$.orderId").value(savedTransaction.getOrderId()))
@@ -265,7 +266,7 @@ class TransactionIntegrationTest {
             assertThat(updatedTransaction.getUpdatedAt()).isAfter(originalUpdatedAt);
             assertThat(updatedTransaction.getCategory()).isEqualTo(TransactionCategory.SHOPPING);
             assertThat(updatedTransaction.getDescription()).isEqualTo("Updated description");
-            
+
             // Verify immutable fields remain unchanged
             assertThat(updatedTransaction.getOrderId()).isEqualTo("ORD-123456");
             assertThat(updatedTransaction.getAccountId()).isEqualTo("ACC-123456");
@@ -287,12 +288,107 @@ class TransactionIntegrationTest {
         void should_return_404_when_updating_non_existent_transaction() throws Exception {
             // When/Then
             mockMvc.perform(put("/transactions/{id}", 999)
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .content(UPDATE_TRANSACTION_REQUEST))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(UPDATE_TRANSACTION_REQUEST))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("TRANSACTION_NOT_FOUND"))
                     .andExpect(jsonPath("$.data.transactionId").value(999))
                     .andExpect(jsonPath("$.data.message").value("Transaction not found with ID: 999"));
+        }
+    }
+
+    @Nested
+    class ListTransactions {
+        @Test
+        void should_return_paginated_transactions() throws Exception {
+            // Given - Create multiple transactions
+            for (int i = 1; i <= 15; i++) {
+                String orderId = String.format("ORD-%06d", i);
+                String accountId = String.format("ACC-%06d", i);
+                String request = CREATE_CREDIT_TRANSACTION_REQUEST
+                        .replace("ORD-123456", orderId)
+                        .replace("ACC-123456", accountId);
+
+                mockMvc.perform(post("/transactions")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(request))
+                        .andExpect(status().isCreated());
+            }
+
+            // When & Then - First page
+            mockMvc.perform(get("/transactions")
+                            .param("pageNumber", "1")
+                            .param("pageSize", "5"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contents").isArray())
+                    .andExpect(jsonPath("$.contents", hasSize(5)))
+                    .andExpect(jsonPath("$.totalSize").value(15));
+
+            // When & Then - Last page
+            mockMvc.perform(get("/transactions")
+                            .param("pageNumber", "3")
+                            .param("pageSize", "5"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contents").isArray())
+                    .andExpect(jsonPath("$.contents", hasSize(5)))
+                    .andExpect(jsonPath("$.totalSize").value(15));
+        }
+
+        @Test
+        void should_return_empty_page_when_no_transactions() throws Exception {
+            mockMvc.perform(get("/transactions"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contents").isArray())
+                    .andExpect(jsonPath("$.contents", hasSize(0)))
+                    .andExpect(jsonPath("$.totalSize").value(0));
+        }
+
+        @Test
+        void should_return_empty_page_when_page_size_is_invalid() throws Exception {
+            mockMvc.perform(get("/transactions")
+                            .param("pageNumber", "1")
+                            .param("pageSize", "0"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contents").isArray())
+                    .andExpect(jsonPath("$.contents", hasSize(0)))
+                    .andExpect(jsonPath("$.totalSize").value(0));
+        }
+
+        @Test
+        void should_return_empty_page_when_page_number_is_invalid() throws Exception {
+            mockMvc.perform(get("/transactions")
+                            .param("pageNumber", "0")
+                            .param("pageSize", "10"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contents").isArray())
+                    .andExpect(jsonPath("$.contents", hasSize(0)))
+                    .andExpect(jsonPath("$.totalSize").value(0));
+        }
+
+        @Test
+        void should_return_empty_page_when_page_exceeds_total() throws Exception {
+            // Given - Create 5 transactions
+            for (int i = 1; i <= 5; i++) {
+                String orderId = String.format("ORD-%06d", i);
+                String accountId = String.format("ACC-%06d", i);
+                String request = CREATE_CREDIT_TRANSACTION_REQUEST
+                        .replace("ORD-123456", orderId)
+                        .replace("ACC-123456", accountId);
+
+                mockMvc.perform(post("/transactions")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(request))
+                        .andExpect(status().isCreated());
+            }
+
+            // When & Then - Request page beyond total records
+            mockMvc.perform(get("/transactions")
+                            .param("pageNumber", "2")
+                            .param("pageSize", "10"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.contents").isArray())
+                    .andExpect(jsonPath("$.contents", hasSize(0)))
+                    .andExpect(jsonPath("$.totalSize").value(5));
         }
     }
 }  

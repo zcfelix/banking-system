@@ -3,14 +3,11 @@ package com.hsbc.banking.transaction.service;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hsbc.banking.transaction.dto.CreateTransactionRequest;
 import com.hsbc.banking.transaction.dto.UpdateTransactionRequest;
+import com.hsbc.banking.transaction.exception.ConcurrentUpdateException;
 import com.hsbc.banking.transaction.exception.DuplicateTransactionException;
 import com.hsbc.banking.transaction.exception.InsufficientBalanceException;
 import com.hsbc.banking.transaction.exception.TransactionNotFoundException;
-import com.hsbc.banking.transaction.exception.ConcurrentUpdateException;
-import com.hsbc.banking.transaction.model.AuditLog;
-import com.hsbc.banking.transaction.model.Transaction;
-import com.hsbc.banking.transaction.model.TransactionType;
-import com.hsbc.banking.transaction.model.TransactionCategory;
+import com.hsbc.banking.transaction.model.*;
 import com.hsbc.banking.transaction.repository.AuditLogRepository;
 import com.hsbc.banking.transaction.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -25,13 +22,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -313,5 +310,98 @@ class TransactionServiceTest {
             assertThat(result.getDescription()).isEqualTo("Updated description");
             verify(transactionRepository, times(3)).update(any(Transaction.class));
         }
+    }
+
+    @Nested
+    class ListTransactions {
+        @Test
+        void should_return_paginated_transactions() {
+            // Given
+            when(transactionRepository.count()).thenReturn(100L);
+            when(transactionRepository.findAll(20, 10))
+                    .thenReturn(List.of(mockTransaction));
+
+            // When
+            Page<Transaction> result = transactionService.listTransactions(3, 10);
+
+            // Then
+            assertThat(result.pageNumber()).isEqualTo(3);
+            assertThat(result.pageSize()).isEqualTo(10);
+            assertThat(result.totalElements()).isEqualTo(100);
+            assertThat(result.totalPages()).isEqualTo(10);
+
+            verify(transactionRepository).findAll(20, 10);
+            verify(transactionRepository).count();
+        }
+
+        @Test
+        void should_return_empty_list_when_page_exceeds_total() {
+            // Given
+            when(transactionRepository.count()).thenReturn(5L);
+
+            // When
+            Page<Transaction> result = transactionService.listTransactions(2, 10);
+
+            // Then
+            assertThat(result.contents()).isEmpty();
+            assertThat(result.pageNumber()).isEqualTo(2);
+            assertThat(result.pageSize()).isEqualTo(10);
+            assertThat(result.totalElements()).isEqualTo(5);
+            assertThat(result.totalPages()).isEqualTo(1);
+
+            verify(transactionRepository, never()).findAll(eq(10), eq(10));
+            verify(transactionRepository).count();
+        }
+
+        @Test
+        void should_return_empty_list_when_page_number_is_invalid() {
+            // Given & When
+            Page<Transaction> result = transactionService.listTransactions(0, 10);
+
+            // Then
+            assertThat(result.contents()).isEmpty();
+            assertThat(result.pageNumber()).isEqualTo(0);
+            assertThat(result.pageSize()).isEqualTo(10);
+            assertThat(result.totalElements()).isEqualTo(0);
+            assertThat(result.totalPages()).isEqualTo(0);
+
+            verify(transactionRepository, never()).findAll(anyInt(), anyInt());
+            verify(transactionRepository, never()).count();
+        }
+
+        @Test
+        void should_return_empty_list_when_page_size_is_invalid() {
+            // Given & When
+            Page<Transaction> result = transactionService.listTransactions(1, 0);
+
+            // Then
+            assertThat(result.contents()).isEmpty();
+            assertThat(result.pageNumber()).isEqualTo(1);
+            assertThat(result.pageSize()).isEqualTo(0);
+            assertThat(result.totalElements()).isEqualTo(0);
+            assertThat(result.totalPages()).isEqualTo(0);
+
+            verify(transactionRepository, never()).findAll(anyInt(), anyInt());
+            verify(transactionRepository, never()).count();
+        }
+
+        @Test
+        void should_limit_page_size_to_100() {
+            // Given
+            when(transactionRepository.count()).thenReturn(200L);
+
+            // When
+            Page<Transaction> result = transactionService.listTransactions(1, 101);
+
+            // Then
+            assertThat(result.pageNumber()).isEqualTo(1);
+            assertThat(result.pageSize()).isEqualTo(100);
+            assertThat(result.totalElements()).isEqualTo(200);
+            assertThat(result.totalPages()).isEqualTo(2);
+
+            verify(transactionRepository).findAll(eq(0), eq(100));
+            verify(transactionRepository).count();
+        }
+
     }
 }

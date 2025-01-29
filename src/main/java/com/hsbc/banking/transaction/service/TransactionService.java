@@ -1,5 +1,6 @@
 package com.hsbc.banking.transaction.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hsbc.banking.transaction.dto.CreateTransactionRequest;
 import com.hsbc.banking.transaction.dto.UpdateTransactionRequest;
 import com.hsbc.banking.transaction.exception.ConcurrentUpdateException;
@@ -7,11 +8,11 @@ import com.hsbc.banking.transaction.exception.InsufficientBalanceException;
 import com.hsbc.banking.transaction.exception.InvalidTransactionException;
 import com.hsbc.banking.transaction.exception.TransactionNotFoundException;
 import com.hsbc.banking.transaction.model.AuditLog;
+import com.hsbc.banking.transaction.model.Page;
 import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.model.TransactionCategory;
 import com.hsbc.banking.transaction.repository.AuditLogRepository;
 import com.hsbc.banking.transaction.repository.TransactionRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -146,5 +147,31 @@ public class TransactionService {
         }
         
         throw new IllegalStateException("Should never reach here");
+    }
+
+    public Page<Transaction> listTransactions(int pageNumber, int pageSize) {
+        // Validate pageNumber and pageSize, return empty list if invalid
+        if (pageNumber < 1 || pageSize <= 0) {
+            return Page.of(List.of(), pageNumber, pageSize, 0);
+        }
+
+        // Limit pageSize to 100
+        int limitedPageSize = Math.min(pageSize, 100);
+
+        // Calculate offset based on pageNumber and pageSize
+        int offset = (pageNumber - 1) * limitedPageSize;
+        
+        // Get total number of elements
+        long totalElements = transactionRepository.count();
+        
+        // Return empty list if offset is greater than total elements
+        if (offset >= totalElements) {
+            return Page.of(List.of(), pageNumber, limitedPageSize, totalElements);
+        }
+        
+        // Get transactions
+        List<Transaction> transactions = transactionRepository.findAll(offset, limitedPageSize);
+        
+        return Page.of(transactions, pageNumber, limitedPageSize, totalElements);
     }
 } 

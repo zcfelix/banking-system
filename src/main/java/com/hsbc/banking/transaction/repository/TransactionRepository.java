@@ -10,7 +10,8 @@ public interface TransactionRepository {
     Transaction update(Transaction transaction);
     Optional<Transaction> findById(Long id);
     Optional<Transaction> findByOrderId(String orderId);
-    List<Transaction> findAll();
+    List<Transaction> findAll(int offset, int limit);
+    long count();
     void deleteById(Long id);
     void clear();
-} 
+}
