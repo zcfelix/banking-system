@@ -17,7 +17,9 @@ public record TransactionResponse(
     TransactionCategory category,
     String description,
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
-    LocalDateTime createdAt
+    LocalDateTime createdAt,
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
+    LocalDateTime updatedAt
 ) {
     public static TransactionResponse from(Transaction transaction) {
         return new TransactionResponse(
@@ -28,7 +30,8 @@ public record TransactionResponse(
             transaction.getType(),
             transaction.getCategory(),
             transaction.getDescription(),
-            transaction.getCreatedAt()
+            transaction.getCreatedAt(),
+            transaction.getUpdatedAt()
         );
     }
 }

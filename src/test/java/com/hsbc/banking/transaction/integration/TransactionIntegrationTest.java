@@ -16,6 +16,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import com.jayway.jsonpath.JsonPath;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -90,13 +91,22 @@ class TransactionIntegrationTest {
                     .andExpect(jsonPath("$.type").value("CREDIT"))
                     .andExpect(jsonPath("$.category").value("SALARY"))
                     .andExpect(jsonPath("$.description").value("Monthly salary payment"))
-                    .andExpect(jsonPath("$.createdAt").isNotEmpty());
+                    .andExpect(jsonPath("$.createdAt").exists())
+                    .andExpect(jsonPath("$.updatedAt").exists())
+                    .andExpect(result -> {
+                        String createdAt = JsonPath.read(result.getResponse().getContentAsString(), "$.createdAt");
+                        String updatedAt = JsonPath.read(result.getResponse().getContentAsString(), "$.updatedAt");
+                        assertThat(updatedAt).isEqualTo(createdAt);
+                    });
             LocalDateTime afterCreation = LocalDateTime.now();
 
             // Then
             Transaction savedTransaction = transactionRepository.findByOrderId("ORD-123456")
                     .orElseThrow(() -> new AssertionError("Transaction not found"));
             assertThat(savedTransaction.getCreatedAt()).isAfter(beforeCreation).isBefore(afterCreation);
+            assertThat(savedTransaction.getUpdatedAt())
+                    .isNotNull()
+                    .isEqualTo(savedTransaction.getCreatedAt());
         }
 
         @Test
@@ -116,7 +126,13 @@ class TransactionIntegrationTest {
                     .andExpect(jsonPath("$.type").value("DEBIT"))
                     .andExpect(jsonPath("$.category").value("SHOPPING"))
                     .andExpect(jsonPath("$.description").value("Shopping payment"))
-                    .andExpect(jsonPath("$.createdAt").isNotEmpty());
+                    .andExpect(jsonPath("$.createdAt").exists())
+                    .andExpect(jsonPath("$.updatedAt").exists())
+                    .andExpect(result -> {
+                        String createdAt = JsonPath.read(result.getResponse().getContentAsString(), "$.createdAt");
+                        String updatedAt = JsonPath.read(result.getResponse().getContentAsString(), "$.updatedAt");
+                        assertThat(updatedAt).isEqualTo(createdAt);
+                    });
 
             // Then
             verify(externalAccountService).hasSufficientBalance(eq("ACC-123456"), eq(new BigDecimal("-100.00")));
@@ -130,6 +146,9 @@ class TransactionIntegrationTest {
             assertThat(savedTransaction.getType()).isEqualTo(TransactionType.DEBIT);
             assertThat(savedTransaction.getCategory()).isEqualTo(TransactionCategory.SHOPPING);
             assertThat(savedTransaction.getDescription()).isEqualTo("Shopping payment");
+            assertThat(savedTransaction.getUpdatedAt())
+                    .isNotNull()
+                    .isEqualTo(savedTransaction.getCreatedAt());
         }
 
         @Test

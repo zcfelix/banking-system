@@ -13,6 +13,7 @@ import com.hsbc.banking.transaction.repository.TransactionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -103,6 +104,7 @@ public class TransactionService {
         // Update allowed fields
         transaction.setCategory(TransactionCategory.fromString(request.category()));
         transaction.setDescription(request.description());
+        transaction.setUpdatedAt(LocalDateTime.now());
 
         // Save updated transaction
         Transaction updatedTransaction = transactionRepository.update(transaction);

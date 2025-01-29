@@ -20,7 +20,8 @@ public class Transaction {
     private TransactionType type;
     private TransactionCategory category;
     private String description;
-    private LocalDateTime createdAt;
+    private final LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     private Transaction(String orderId, String accountId, BigDecimal amount, TransactionType type, TransactionCategory category, String description) {
         this.orderId = orderId;
@@ -30,6 +31,7 @@ public class Transaction {
         this.category = category;
         this.description = description;
         this.createdAt = LocalDateTime.now();
+        this.updatedAt = this.createdAt;
     }
 
     public static Transaction create(String orderId, String accountId, BigDecimal amount, String type, String category, String description) {
@@ -165,6 +167,14 @@ public class Transaction {
 
     public LocalDateTime getCreatedAt() {
         return createdAt;
+    }
+
+    public LocalDateTime getUpdatedAt() {
+        return updatedAt;
+    }
+
+    public void setUpdatedAt(LocalDateTime updatedAt) {
+        this.updatedAt = updatedAt;
     }
 
     @Override

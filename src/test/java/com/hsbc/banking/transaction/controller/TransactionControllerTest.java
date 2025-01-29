@@ -18,6 +18,8 @@ import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import com.jayway.jsonpath.JsonPath;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -69,7 +71,14 @@ class TransactionControllerTest {
                     .andExpect(jsonPath("$.id").value(1))
                     .andExpect(jsonPath("$.orderId").value("ORD-012345"))
                     .andExpect(jsonPath("$.type").value("CREDIT"))
-                    .andExpect(jsonPath("$.category").value("SALARY"));
+                    .andExpect(jsonPath("$.category").value("SALARY"))
+                    .andExpect(jsonPath("$.createdAt").exists())
+                    .andExpect(jsonPath("$.updatedAt").exists())
+                    .andExpect(result -> {
+                        String createdAt = JsonPath.read(result.getResponse().getContentAsString(), "$.createdAt");
+                        String updatedAt = JsonPath.read(result.getResponse().getContentAsString(), "$.updatedAt");
+                        assertThat(updatedAt).isEqualTo(createdAt);
+                    });
         }
 
         @Test
@@ -78,8 +87,17 @@ class TransactionControllerTest {
                     .thenReturn(mockTransaction);
             performTransactionCreation("ORD-012345", "credit")
                     .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.id").value(1))
+                    .andExpect(jsonPath("$.orderId").value("ORD-012345"))
                     .andExpect(jsonPath("$.type").value("CREDIT"))
-                    .andExpect(jsonPath("$.category").value("SALARY"));
+                    .andExpect(jsonPath("$.category").value("SALARY"))
+                    .andExpect(jsonPath("$.createdAt").exists())
+                    .andExpect(jsonPath("$.updatedAt").exists())
+                    .andExpect(result -> {
+                        String createdAt = JsonPath.read(result.getResponse().getContentAsString(), "$.createdAt");
+                        String updatedAt = JsonPath.read(result.getResponse().getContentAsString(), "$.updatedAt");
+                        assertThat(updatedAt).isEqualTo(createdAt);
+                    });
         }
 
         @Test

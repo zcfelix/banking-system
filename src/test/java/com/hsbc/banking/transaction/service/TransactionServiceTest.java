@@ -91,6 +91,9 @@ class TransactionServiceTest {
             assertThat(result.getCategory()).isEqualTo(TransactionCategory.SALARY);
             assertThat(result.getDescription()).isEqualTo(DESCRIPTION);
             assertThat(result.getCreatedAt()).isBefore(afterCreation);
+            assertThat(result.getUpdatedAt())
+                    .isNotNull()
+                    .isEqualTo(result.getCreatedAt());
         }
 
         @Test
