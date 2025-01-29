@@ -2,12 +2,14 @@ package com.hsbc.banking.transaction.controller;
 
 import com.hsbc.banking.transaction.dto.CreateTransactionRequest;
 import com.hsbc.banking.transaction.dto.TransactionResponse;
-import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.service.TransactionService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/transactions")
@@ -20,24 +22,9 @@ public class TransactionController {
 
     @PostMapping
     public ResponseEntity<TransactionResponse> createTransaction(@Valid @RequestBody CreateTransactionRequest request) {
-        Transaction transaction = transactionService.createTransaction(
-                request.orderId(),
-                request.accountId(),
-                request.amount(),
-                request.type(),
-                request.category(),
-                request.description()
+        return new ResponseEntity<>(
+                TransactionResponse.from(transactionService.createTransaction(request)),
+                HttpStatus.CREATED
         );
-        TransactionResponse response = new TransactionResponse(
-                transaction.getId(),
-                transaction.getOrderId(),
-                transaction.getAccountId(),
-                transaction.getAmount(),
-                transaction.getType(),
-                transaction.getCategory(),
-                transaction.getDescription(),
-                transaction.getCreatedAt()
-        );
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 } 

@@ -1,10 +1,11 @@
 package com.hsbc.banking.transaction.controller;
 
+import com.hsbc.banking.transaction.dto.CreateTransactionRequest;
 import com.hsbc.banking.transaction.exception.DuplicateTransactionException;
 import com.hsbc.banking.transaction.exception.InvalidTransactionException;
 import com.hsbc.banking.transaction.model.Transaction;
-import com.hsbc.banking.transaction.model.TransactionType;
 import com.hsbc.banking.transaction.model.TransactionCategory;
+import com.hsbc.banking.transaction.model.TransactionType;
 import com.hsbc.banking.transaction.service.TransactionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,9 +19,10 @@ import org.springframework.test.web.servlet.ResultActions;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -52,11 +54,12 @@ public class TransactionControllerTest {
     @BeforeEach
     void setUp() {
         mockTransaction = createMockTransaction();
-        setupTransactionServiceMock();
     }
 
     @Test
     void should_create_transaction() throws Exception {
+        when(transactionService.createTransaction(any(CreateTransactionRequest.class)))
+                .thenReturn(mockTransaction);
         performTransactionCreation("ORD-012345", "CREDIT")
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
@@ -67,6 +70,8 @@ public class TransactionControllerTest {
 
     @Test
     void should_create_transaction_with_lowercase_type() throws Exception {
+        when(transactionService.createTransaction(any(CreateTransactionRequest.class)))
+                .thenReturn(mockTransaction);
         performTransactionCreation("ORD-012345", "credit")
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.type").value("CREDIT"))
@@ -75,7 +80,10 @@ public class TransactionControllerTest {
 
     @Test
     void should_return_409_when_transaction_is_duplicate() throws Exception {
-        setupDuplicateTransactionMock();
+        when(transactionService.createTransaction(any(CreateTransactionRequest.class))).thenThrow(new DuplicateTransactionException(
+                Map.of("orderId", "ORD-012345",
+                      "message", "Transaction with ORD-012345 already exists")
+        ));
         performTransactionCreation("ORD-012345", "CREDIT")
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("TRANSACTION_CONFLICT"))
@@ -84,6 +92,8 @@ public class TransactionControllerTest {
 
     @Test
     void should_return_400_when_order_id_is_blank() throws Exception {
+        when(transactionService.createTransaction(any(CreateTransactionRequest.class)))
+                .thenReturn(mockTransaction);
         performTransactionCreation("", "CREDIT")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_REQUEST"))
@@ -92,6 +102,9 @@ public class TransactionControllerTest {
 
     @Test
     void should_return_400_when_type_is_invalid() throws Exception {
+        when(transactionService.createTransaction(any(CreateTransactionRequest.class)))
+                .thenThrow(new InvalidTransactionException(
+                        Map.of("errors", List.of("Invalid transaction type. Valid types are: " + Arrays.toString(TransactionType.values())))));
         performTransactionCreation("ORD-012345", "INVALID")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_TRANSACTION"))
@@ -109,41 +122,6 @@ public class TransactionControllerTest {
         );
         transaction.setId(1L);
         return transaction;
-    }
-
-    private void setupTransactionServiceMock() {
-        when(transactionService.createTransaction(
-                any(String.class),
-                any(String.class),
-                any(BigDecimal.class),
-                eq("INVALID"),
-                any(String.class),
-                any(String.class)))
-                .thenThrow(new InvalidTransactionException(
-                        Map.of("errors", java.util.List.of("Invalid transaction type. Valid types are: " + Arrays.toString(TransactionType.values())))));
-
-        when(transactionService.createTransaction(
-                any(String.class),
-                any(String.class),
-                any(BigDecimal.class),
-                argThat(type -> Arrays.stream(TransactionType.values()).anyMatch(t -> t.name().equalsIgnoreCase(type))),
-                any(String.class),
-                any(String.class)))
-                .thenReturn(mockTransaction);
-    }
-
-    private void setupDuplicateTransactionMock() {
-        when(transactionService.createTransaction(
-                any(String.class),
-                any(String.class),
-                any(BigDecimal.class),
-                any(String.class),
-                any(String.class),
-                any(String.class)))
-                .thenThrow(new DuplicateTransactionException(
-                        Map.of("orderId", "ORD-012345",
-                              "message", "Transaction with ORD-012345 already exists")
-                ));
     }
 
     private ResultActions performTransactionCreation(String orderId, String type) throws Exception {

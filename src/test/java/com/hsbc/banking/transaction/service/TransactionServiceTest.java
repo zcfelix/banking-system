@@ -1,5 +1,6 @@
 package com.hsbc.banking.transaction.service;
 
+import com.hsbc.banking.transaction.dto.CreateTransactionRequest;
 import com.hsbc.banking.transaction.exception.DuplicateTransactionException;
 import com.hsbc.banking.transaction.exception.InsufficientBalanceException;
 import com.hsbc.banking.transaction.model.Transaction;
@@ -57,7 +58,7 @@ class TransactionServiceTest {
 
         // When
         Transaction result = transactionService.createTransaction(
-                ORDER_ID, ACCOUNT_ID, AMOUNT, TransactionType.DEBIT.name(), CATEGORY, DESCRIPTION
+                new CreateTransactionRequest(ORDER_ID, ACCOUNT_ID, AMOUNT, TYPE, CATEGORY, DESCRIPTION)
         );
         LocalDateTime afterCreation = LocalDateTime.now();
 
@@ -81,7 +82,7 @@ class TransactionServiceTest {
         // When/Then
         assertThatThrownBy(() ->
                 transactionService.createTransaction(
-                        ORDER_ID, ACCOUNT_ID, AMOUNT, TYPE, CATEGORY, DESCRIPTION
+                        new CreateTransactionRequest(ORDER_ID, ACCOUNT_ID, AMOUNT, TYPE, CATEGORY, DESCRIPTION)
                 ))
                 .isInstanceOf(InsufficientBalanceException.class)
                 .satisfies(thrown -> {
@@ -105,7 +106,7 @@ class TransactionServiceTest {
         // When/Then
         assertThatThrownBy(() ->
                 transactionService.createTransaction(
-                        ORDER_ID, ACCOUNT_ID, AMOUNT, TYPE, CATEGORY, DESCRIPTION
+                       new CreateTransactionRequest(ORDER_ID, ACCOUNT_ID, AMOUNT, TYPE, CATEGORY, DESCRIPTION)
                 ))
                 .isInstanceOf(DuplicateTransactionException.class)
                 .satisfies(thrown -> {

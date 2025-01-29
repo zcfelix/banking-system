@@ -1,11 +1,10 @@
 package com.hsbc.banking.transaction.service;
 
+import com.hsbc.banking.transaction.dto.CreateTransactionRequest;
 import com.hsbc.banking.transaction.exception.InsufficientBalanceException;
 import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
-
-import java.math.BigDecimal;
 
 @Service
 public class TransactionService {
@@ -13,29 +12,28 @@ public class TransactionService {
     private final ExternalAccountService externalAccountService;
 
     public TransactionService(TransactionRepository transactionRepository,
-                            ExternalAccountService externalAccountService) {
+                              ExternalAccountService externalAccountService) {
         this.transactionRepository = transactionRepository;
         this.externalAccountService = externalAccountService;
     }
 
-    public Transaction createTransaction(String orderId,
-                                      String accountId,
-                                      BigDecimal amount,
-                                      String type,
-                                      String category,
-                                      String description) {
+    public Transaction createTransaction(CreateTransactionRequest request) {
         Transaction transaction = Transaction.create(
-            orderId, 
-            accountId, 
-            amount, 
-            type, 
-            category, 
-            description
+                request.orderId(),
+                request.accountId(),
+                request.amount(),
+                request.type(),
+                request.category(),
+                request.description()
         );
 
         // Check if account has sufficient balance for debit transactions
-        if (transaction.getType().isDebit() && !externalAccountService.hasSufficientBalance(accountId, amount)) {
-            throw new InsufficientBalanceException(accountId, "Insufficient balance for transaction amount: " + amount);
+        if (transaction.getType().isDebit() &&
+            !externalAccountService.hasSufficientBalance(transaction.getAccountId(), transaction.getAmount())) {
+            throw new InsufficientBalanceException(
+                    transaction.getAccountId(),
+                    "Insufficient balance for transaction amount: " + transaction.getAmount()
+            );
         }
 
         return transactionRepository.save(transaction);
