@@ -1,15 +1,21 @@
 package com.hsbc.banking.transaction.service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hsbc.banking.transaction.dto.CreateTransactionRequest;
 import com.hsbc.banking.transaction.exception.DuplicateTransactionException;
 import com.hsbc.banking.transaction.exception.InsufficientBalanceException;
+import com.hsbc.banking.transaction.exception.TransactionNotFoundException;
+import com.hsbc.banking.transaction.model.AuditLog;
 import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.model.TransactionType;
 import com.hsbc.banking.transaction.model.TransactionCategory;
+import com.hsbc.banking.transaction.repository.AuditLogRepository;
 import com.hsbc.banking.transaction.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -17,12 +23,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TransactionServiceTest {
@@ -32,6 +39,12 @@ class TransactionServiceTest {
 
     @Mock
     private ExternalAccountService externalAccountService;
+
+    @Mock
+    private AuditLogRepository auditLogRepository;
+
+    @Mock
+    private ObjectMapper objectMapper;
 
     @InjectMocks
     private TransactionService transactionService;
@@ -43,6 +56,9 @@ class TransactionServiceTest {
     private static final String TYPE = TransactionType.DEBIT.name();
     private static final String CATEGORY = TransactionCategory.SALARY.name();
     private static final String DESCRIPTION = "Monthly salary";
+
+    @Captor
+    private ArgumentCaptor<AuditLog> auditLogCaptor;
 
     @BeforeEach
     void setUp() {
@@ -115,5 +131,67 @@ class TransactionServiceTest {
                             .containsEntry("orderId", ORDER_ID)
                             .containsEntry("message", "Transaction with order ID already exists");
                 });
+    }
+
+    @Test
+    void should_delete_transaction_successfully() throws Exception {
+        // Given
+        Long transactionId = 1L;
+        when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(mockTransaction));
+        when(objectMapper.writeValueAsString(mockTransaction)).thenReturn("transaction json");
+
+        // When
+        transactionService.deleteTransaction(transactionId);
+
+        // Then
+        verify(transactionRepository).deleteById(transactionId);
+        verify(auditLogRepository).save(auditLogCaptor.capture());
+        
+        AuditLog capturedLog = auditLogCaptor.getValue();
+        assertThat(capturedLog.getOperation()).isEqualTo("DELETE");
+        assertThat(capturedLog.getEntityType()).isEqualTo("Transaction");
+        assertThat(capturedLog.getEntityId()).isEqualTo(String.valueOf(transactionId));
+        assertThat(capturedLog.getDetails()).contains("transaction json");
+    }
+
+    @Test
+    void should_throw_exception_when_deleting_non_existent_transaction() {
+        // Given
+        Long transactionId = 999L;
+        when(transactionRepository.findById(transactionId)).thenReturn(Optional.empty());
+
+        // When/Then
+        assertThatThrownBy(() -> transactionService.deleteTransaction(transactionId))
+                .isInstanceOf(TransactionNotFoundException.class)
+                .satisfies(thrown -> {
+                    TransactionNotFoundException ex = (TransactionNotFoundException) thrown;
+                    assertThat(ex.getData())
+                            .containsEntry("transactionId", transactionId)
+                            .containsEntry("message", "Transaction not found with ID: " + transactionId);
+                });
+
+        verify(transactionRepository, never()).deleteById(any());
+        verify(auditLogRepository, never()).save(any());
+    }
+
+    @Test
+    void should_create_audit_log_even_when_serialization_fails() throws Exception {
+        // Given
+        Long transactionId = 1L;
+        when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(mockTransaction));
+        when(objectMapper.writeValueAsString(mockTransaction)).thenThrow(new RuntimeException("Serialization failed"));
+
+        // When
+        transactionService.deleteTransaction(transactionId);
+
+        // Then
+        verify(transactionRepository).deleteById(transactionId);
+        verify(auditLogRepository).save(auditLogCaptor.capture());
+        
+        AuditLog capturedLog = auditLogCaptor.getValue();
+        assertThat(capturedLog.getOperation()).isEqualTo("DELETE");
+        assertThat(capturedLog.getEntityType()).isEqualTo("Transaction");
+        assertThat(capturedLog.getEntityId()).isEqualTo(String.valueOf(transactionId));
+        assertThat(capturedLog.getDetails()).contains("Serialization failed");
     }
 }

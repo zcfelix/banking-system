@@ -5,6 +5,8 @@ import com.hsbc.banking.transaction.model.TransactionCategory;
 import com.hsbc.banking.transaction.model.TransactionType;
 import com.hsbc.banking.transaction.repository.TransactionRepository;
 import com.hsbc.banking.transaction.service.ExternalAccountService;
+import com.hsbc.banking.transaction.model.AuditLog;
+import com.hsbc.banking.transaction.repository.AuditLogRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,12 +18,14 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -38,6 +42,9 @@ class TransactionIntegrationTest {
 
     @MockBean
     private ExternalAccountService externalAccountService;
+
+    @Autowired
+    private AuditLogRepository auditLogRepository;
 
     private static final String CREATE_CREDIT_TRANSACTION_REQUEST = """
             {
@@ -139,5 +146,42 @@ class TransactionIntegrationTest {
 
         // Verify no transaction was saved
         assertThat(transactionRepository.findByOrderId("ORD-123456")).isEmpty();
+    }
+
+    @Test
+    void should_delete_transaction_successfully() throws Exception {
+        // Given - Create a transaction first
+        mockMvc.perform(post("/transactions")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(CREATE_CREDIT_TRANSACTION_REQUEST))
+                .andExpect(status().isCreated());
+
+        Transaction savedTransaction = transactionRepository.findByOrderId("ORD-123456")
+                .orElseThrow(() -> new AssertionError("Transaction not found"));
+
+        // When
+        mockMvc.perform(delete("/transactions/{id}", savedTransaction.getId()))
+                .andExpect(status().isNoContent());
+
+        // Then
+        assertThat(transactionRepository.findById(savedTransaction.getId())).isEmpty();
+        
+        // Verify audit log
+        List<AuditLog> auditLogs = auditLogRepository.findByEntityTypeAndEntityId(
+                "Transaction", String.valueOf(savedTransaction.getId()));
+        assertThat(auditLogs).hasSize(1);
+        AuditLog auditLog = auditLogs.get(0);
+        assertThat(auditLog.getOperation()).isEqualTo("DELETE");
+        assertThat(auditLog.getDetails()).contains("ORD-123456");
+    }
+
+    @Test
+    void should_return_404_when_deleting_non_existent_transaction() throws Exception {
+        // When/Then
+        mockMvc.perform(delete("/transactions/{id}", 999))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TRANSACTION_NOT_FOUND"))
+                .andExpect(jsonPath("$.data.transactionId").value(999))
+                .andExpect(jsonPath("$.data.message").value("Transaction not found with ID: 999"));
     }
 }  

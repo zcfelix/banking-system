@@ -46,6 +46,15 @@ public class InMemoryTransactionRepository implements TransactionRepository {
     }
 
     @Override
+    public void deleteById(Long id) {
+        Transaction transaction = transactions.get(id);
+        if (transaction != null) {
+            transactions.remove(id);
+            orderIdIndex.remove(transaction.getOrderId());
+        }
+    }
+
+    @Override
     public void clear() {
         transactions.clear();
         orderIdIndex.clear();

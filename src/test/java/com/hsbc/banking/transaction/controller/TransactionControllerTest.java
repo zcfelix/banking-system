@@ -3,6 +3,7 @@ package com.hsbc.banking.transaction.controller;
 import com.hsbc.banking.transaction.dto.CreateTransactionRequest;
 import com.hsbc.banking.transaction.exception.DuplicateTransactionException;
 import com.hsbc.banking.transaction.exception.InvalidTransactionException;
+import com.hsbc.banking.transaction.exception.TransactionNotFoundException;
 import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.model.TransactionCategory;
 import com.hsbc.banking.transaction.model.TransactionType;
@@ -23,8 +24,8 @@ import java.util.List;
 import java.util.Map;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -109,6 +110,36 @@ public class TransactionControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_TRANSACTION"))
                 .andExpect(jsonPath("$.data.errors[0]").value("Invalid transaction type. Valid types are: " + Arrays.toString(TransactionType.values())));
+    }
+
+    @Test
+    void should_delete_transaction_successfully() throws Exception {
+        // Given
+        Long transactionId = 1L;
+        doNothing().when(transactionService).deleteTransaction(transactionId);
+
+        // When & Then
+        mockMvc.perform(delete("/transactions/{id}", transactionId))
+                .andExpect(status().isNoContent());
+
+        verify(transactionService).deleteTransaction(transactionId);
+    }
+
+    @Test
+    void should_return_404_when_deleting_non_existent_transaction() throws Exception {
+        // Given
+        Long transactionId = 999L;
+        doThrow(new TransactionNotFoundException(transactionId))
+                .when(transactionService).deleteTransaction(transactionId);
+
+        // When & Then
+        mockMvc.perform(delete("/transactions/{id}", transactionId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("TRANSACTION_NOT_FOUND"))
+                .andExpect(jsonPath("$.data.transactionId").value(transactionId))
+                .andExpect(jsonPath("$.data.message").value("Transaction not found with ID: " + transactionId));
+
+        verify(transactionService).deleteTransaction(transactionId);
     }
 
     private Transaction createMockTransaction() {

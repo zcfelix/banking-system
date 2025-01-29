@@ -10,5 +10,6 @@ public interface TransactionRepository {
     Optional<Transaction> findById(Long id);
     Optional<Transaction> findByOrderId(String orderId);
     List<Transaction> findAll();
+    void deleteById(Long id);
     void clear();
 } 
