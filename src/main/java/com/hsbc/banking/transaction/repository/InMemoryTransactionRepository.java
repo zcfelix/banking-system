@@ -19,14 +19,26 @@ public class InMemoryTransactionRepository implements TransactionRepository {
 
     @Override
     public Transaction save(Transaction transaction) {
-        checkDuplicate(transaction);
-        
+        // check if transaction with order ID already exists, which means it's a duplicate transaction
+        if (orderIdIndex.containsKey(transaction.getOrderId())) {
+            throw new DuplicateTransactionException(
+                    Map.of("orderId", transaction.getOrderId(),
+                            "message", "Transaction with order ID already exists")
+            );
+        }
+
         Long id = idGenerator.getAndIncrement();
         transaction.setId(id);
         
         transactions.put(id, transaction);
         orderIdIndex.put(transaction.getOrderId(), transaction);
         
+        return transaction;
+    }
+
+    @Override
+    public Transaction update(Transaction transaction) {
+        transactions.put(transaction.getId(), transaction);
         return transaction;
     }
 
@@ -61,12 +73,4 @@ public class InMemoryTransactionRepository implements TransactionRepository {
         idGenerator.set(1);
     }
 
-    private void checkDuplicate(Transaction transaction) {
-        if (orderIdIndex.containsKey(transaction.getOrderId())) {
-            throw new DuplicateTransactionException(
-                    Map.of("orderId", transaction.getOrderId(),
-                            "message", "Transaction with order ID already exists")
-            );
-        }
-    }
 }

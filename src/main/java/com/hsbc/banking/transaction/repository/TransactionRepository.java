@@ -7,6 +7,7 @@ import java.util.Optional;
 
 public interface TransactionRepository {
     Transaction save(Transaction transaction);
+    Transaction update(Transaction transaction);
     Optional<Transaction> findById(Long id);
     Optional<Transaction> findByOrderId(String orderId);
     List<Transaction> findAll();

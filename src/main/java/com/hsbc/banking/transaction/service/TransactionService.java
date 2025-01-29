@@ -1,14 +1,20 @@
 package com.hsbc.banking.transaction.service;
 
 import com.hsbc.banking.transaction.dto.CreateTransactionRequest;
+import com.hsbc.banking.transaction.dto.UpdateTransactionRequest;
 import com.hsbc.banking.transaction.exception.InsufficientBalanceException;
+import com.hsbc.banking.transaction.exception.InvalidTransactionException;
 import com.hsbc.banking.transaction.exception.TransactionNotFoundException;
 import com.hsbc.banking.transaction.model.AuditLog;
 import com.hsbc.banking.transaction.model.Transaction;
+import com.hsbc.banking.transaction.model.TransactionCategory;
 import com.hsbc.banking.transaction.repository.AuditLogRepository;
 import com.hsbc.banking.transaction.repository.TransactionRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
 
 @Service
 public class TransactionService {
@@ -69,5 +75,53 @@ public class TransactionService {
         ));
 
         transactionRepository.deleteById(id);
+    }
+
+    public Transaction updateTransaction(Long id, UpdateTransactionRequest request) {
+        // Find and validate transaction exists
+        Transaction transaction = transactionRepository.findById(id)
+                .orElseThrow(() -> new TransactionNotFoundException(id));
+
+        // Validate category
+        try {
+            TransactionCategory.fromString(request.category());
+        } catch (IllegalArgumentException e) {
+            throw new InvalidTransactionException(Map.of(
+                    "errors", List.of("Invalid transaction category. Valid categories are: " + 
+                            java.util.Arrays.toString(TransactionCategory.values()))
+            ));
+        }
+
+        // Create audit log before update
+        String oldState;
+        try {
+            oldState = objectMapper.writeValueAsString(transaction);
+        } catch (Exception e) {
+            oldState = "Failed to serialize old state: " + e.getMessage();
+        }
+
+        // Update allowed fields
+        transaction.setCategory(TransactionCategory.fromString(request.category()));
+        transaction.setDescription(request.description());
+
+        // Save updated transaction
+        Transaction updatedTransaction = transactionRepository.update(transaction);
+
+        // Create audit log after update
+        String newState;
+        try {
+            newState = objectMapper.writeValueAsString(updatedTransaction);
+        } catch (Exception e) {
+            newState = "Failed to serialize new state: " + e.getMessage();
+        }
+
+        auditLogRepository.save(new AuditLog(
+                "UPDATE",
+                "Transaction",
+                String.valueOf(id),
+                "Updated transaction from: " + oldState + " to: " + newState
+        ));
+
+        return updatedTransaction;
     }
 } 
