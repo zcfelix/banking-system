@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
@@ -26,6 +27,7 @@ class TransactionTest {
     @Test
     void should_create_valid_credit_transaction() {
         // When
+        LocalDateTime beforeCreation = LocalDateTime.now();
         Transaction transaction = Transaction.create(
             VALID_ORDER_ID,
             VALID_ACCOUNT_ID,
@@ -34,6 +36,7 @@ class TransactionTest {
             VALID_CATEGORY,
             VALID_DESCRIPTION
         );
+        LocalDateTime afterCreation = LocalDateTime.now();
 
         // Then
         assertThat(transaction).isNotNull();
@@ -43,11 +46,13 @@ class TransactionTest {
         assertThat(transaction.getType()).isEqualTo(TransactionType.CREDIT);
         assertThat(transaction.getCategory()).isEqualTo(TransactionCategory.SALARY);
         assertThat(transaction.getDescription()).isEqualTo(VALID_DESCRIPTION);
+        assertThat(transaction.getCreatedAt()).isAfter(beforeCreation).isBefore(afterCreation);
     }
 
     @Test
     void should_create_valid_debit_transaction() {
         // When
+        LocalDateTime beforeCreation = LocalDateTime.now();
         Transaction transaction = Transaction.create(
             VALID_ORDER_ID,
             VALID_ACCOUNT_ID,
@@ -56,6 +61,7 @@ class TransactionTest {
             TransactionCategory.SHOPPING.name(),
             VALID_DESCRIPTION
         );
+        LocalDateTime afterCreation = LocalDateTime.now();
 
         // Then
         assertThat(transaction).isNotNull();
@@ -65,11 +71,13 @@ class TransactionTest {
         assertThat(transaction.getType()).isEqualTo(TransactionType.DEBIT);
         assertThat(transaction.getCategory()).isEqualTo(TransactionCategory.SHOPPING);
         assertThat(transaction.getDescription()).isEqualTo(VALID_DESCRIPTION);
+        assertThat(transaction.getCreatedAt()).isAfter(beforeCreation).isBefore(afterCreation);
     }
 
     @Test
     void should_create_transaction_with_null_description() {
         // When
+        LocalDateTime beforeCreation = LocalDateTime.now();
         Transaction transaction = Transaction.create(
             VALID_ORDER_ID,
             VALID_ACCOUNT_ID,
@@ -78,10 +86,12 @@ class TransactionTest {
             VALID_CATEGORY,
             null
         );
+        LocalDateTime afterCreation = LocalDateTime.now();
 
         // Then
         assertThat(transaction).isNotNull();
         assertThat(transaction.getDescription()).isNull();
+        assertThat(transaction.getCreatedAt()).isAfter(beforeCreation).isBefore(afterCreation);
     }
 
     private static Stream<Arguments> invalidTransactionScenarios() {

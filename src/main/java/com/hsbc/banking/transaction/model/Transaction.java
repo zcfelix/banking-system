@@ -3,6 +3,7 @@ package com.hsbc.banking.transaction.model;
 import com.hsbc.banking.transaction.exception.InvalidTransactionException;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.regex.Pattern;
 
@@ -19,6 +20,7 @@ public class Transaction {
     private TransactionType type;
     private TransactionCategory category;
     private String description;
+    private LocalDateTime createdAt;
 
     private Transaction(String orderId, String accountId, BigDecimal amount, TransactionType type, TransactionCategory category, String description) {
         this.orderId = orderId;
@@ -27,6 +29,7 @@ public class Transaction {
         this.type = type;
         this.category = category;
         this.description = description;
+        this.createdAt = LocalDateTime.now();
     }
 
     public static Transaction create(String orderId, String accountId, BigDecimal amount, String type, String category, String description) {
@@ -158,6 +161,10 @@ public class Transaction {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public LocalDateTime getCreatedAt() {
+        return createdAt;
     }
 
     @Override

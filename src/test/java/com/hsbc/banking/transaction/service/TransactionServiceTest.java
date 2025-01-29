@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -58,6 +59,7 @@ class TransactionServiceTest {
         Transaction result = transactionService.createTransaction(
                 ORDER_ID, ACCOUNT_ID, AMOUNT, TransactionType.DEBIT.name(), CATEGORY, DESCRIPTION
         );
+        LocalDateTime afterCreation = LocalDateTime.now();
 
         // Then
         assertThat(result).isNotNull();
@@ -68,6 +70,7 @@ class TransactionServiceTest {
         assertThat(result.getType()).isEqualTo(TransactionType.DEBIT);
         assertThat(result.getCategory()).isEqualTo(TransactionCategory.SALARY);
         assertThat(result.getDescription()).isEqualTo(DESCRIPTION);
+        assertThat(result.getCreatedAt()).isBefore(afterCreation);
     }
 
     @Test

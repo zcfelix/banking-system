@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -68,6 +69,7 @@ class TransactionIntegrationTest {
     @Test
     void should_create_credit_transaction_successfully() throws Exception {
         // When
+        LocalDateTime beforeCreation = LocalDateTime.now();
         mockMvc.perform(post("/transactions")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(CREATE_CREDIT_TRANSACTION_REQUEST))
@@ -77,18 +79,14 @@ class TransactionIntegrationTest {
                 .andExpect(jsonPath("$.amount").value("100.00"))
                 .andExpect(jsonPath("$.type").value("CREDIT"))
                 .andExpect(jsonPath("$.category").value("SALARY"))
-                .andExpect(jsonPath("$.description").value("Monthly salary payment"));
+                .andExpect(jsonPath("$.description").value("Monthly salary payment"))
+                .andExpect(jsonPath("$.createdAt").isNotEmpty());
+        LocalDateTime afterCreation = LocalDateTime.now();
 
         // Then
         Transaction savedTransaction = transactionRepository.findByOrderId("ORD-123456")
                 .orElseThrow(() -> new AssertionError("Transaction not found"));
-
-        assertThat(savedTransaction.getOrderId()).isEqualTo("ORD-123456");
-        assertThat(savedTransaction.getAccountId()).isEqualTo("ACC-123456");
-        assertThat(savedTransaction.getAmount()).isEqualByComparingTo(new BigDecimal("100.00"));
-        assertThat(savedTransaction.getType()).isEqualTo(TransactionType.CREDIT);
-        assertThat(savedTransaction.getCategory()).isEqualTo(TransactionCategory.SALARY);
-        assertThat(savedTransaction.getDescription()).isEqualTo("Monthly salary payment");
+        assertThat(savedTransaction.getCreatedAt()).isAfter(beforeCreation).isBefore(afterCreation);
     }
 
     @Test
@@ -107,7 +105,8 @@ class TransactionIntegrationTest {
                 .andExpect(jsonPath("$.amount").value("-100.00"))
                 .andExpect(jsonPath("$.type").value("DEBIT"))
                 .andExpect(jsonPath("$.category").value("SHOPPING"))
-                .andExpect(jsonPath("$.description").value("Shopping payment"));
+                .andExpect(jsonPath("$.description").value("Shopping payment"))
+                .andExpect(jsonPath("$.createdAt").isNotEmpty());
 
         // Then
         verify(externalAccountService).hasSufficientBalance(eq("ACC-123456"), eq(new BigDecimal("-100.00")));

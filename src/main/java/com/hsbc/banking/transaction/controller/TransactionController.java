@@ -35,7 +35,8 @@ public class TransactionController {
                 transaction.getAmount(),
                 transaction.getType(),
                 transaction.getCategory(),
-                transaction.getDescription()
+                transaction.getDescription(),
+                transaction.getCreatedAt()
         );
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
