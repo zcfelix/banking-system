@@ -17,10 +17,10 @@ public class Transaction {
     private String accountId;
     private BigDecimal amount;
     private TransactionType type;
-    private String category;
+    private TransactionCategory category;
     private String description;
 
-    private Transaction(String orderId, String accountId, BigDecimal amount, TransactionType type, String category, String description) {
+    private Transaction(String orderId, String accountId, BigDecimal amount, TransactionType type, TransactionCategory category, String description) {
         this.orderId = orderId;
         this.accountId = accountId;
         this.amount = amount;
@@ -34,11 +34,12 @@ public class Transaction {
         if (!errors.isEmpty()) {
             throw new InvalidTransactionException(Map.of("errors", errors));
         }
-        return new Transaction(orderId, accountId, amount, TransactionType.fromString(type), category, description);
+        return new Transaction(orderId, accountId, amount, TransactionType.fromString(type), TransactionCategory.fromString(category), description);
     }
 
     private static List<String> validate(String orderId, String accountId, BigDecimal amount, String type, String category, String description) {
         List<String> errors = new ArrayList<>();
+        TransactionType transactionType = null;
 
         // Validate orderId
         if (orderId == null || !ORDER_ID_PATTERN.matcher(orderId).matches()) {
@@ -51,12 +52,25 @@ public class Transaction {
         }
 
         // Validate type
-        if (type != null) {
-            if (Arrays.stream(TransactionType.values()).noneMatch(t -> t.name().equalsIgnoreCase(type))) {
-                errors.add("Invalid transaction type. Valid values are: " + Arrays.toString(TransactionType.values()));
-            }
-        } else {
+        if (type == null) {
             errors.add("Transaction type cannot be null");
+        } else {
+            try {
+                transactionType = TransactionType.fromString(type);
+            } catch (IllegalArgumentException e) {
+                errors.add("Invalid transaction type. Valid types are: " + Arrays.toString(TransactionType.values()));
+            }
+        }
+
+        // Validate category
+        if (category == null) {
+            errors.add("Transaction category cannot be null");
+        } else {
+            try {
+                TransactionCategory transactionCategory = TransactionCategory.fromString(category);
+            } catch (IllegalArgumentException e) {
+                errors.add("Invalid transaction category. Valid categories are: " + Arrays.toString(TransactionCategory.values()));
+            }
         }
 
         // Validate amount
@@ -70,11 +84,10 @@ public class Transaction {
             }
 
             // Validate amount sign based on transaction type
-            if (type != null) {
-                TransactionType convertedType = TransactionType.fromString(type);
-                if (convertedType == TransactionType.CREDIT && amount.compareTo(BigDecimal.ZERO) <= 0) {
+            if (transactionType != null) {
+                if (transactionType == TransactionType.CREDIT && amount.compareTo(BigDecimal.ZERO) <= 0) {
                     errors.add("Amount must be positive for CREDIT transactions");
-                } else if (convertedType == TransactionType.DEBIT && amount.compareTo(BigDecimal.ZERO) >= 0) {
+                } else if (transactionType == TransactionType.DEBIT && amount.compareTo(BigDecimal.ZERO) >= 0) {
                     errors.add("Amount must be negative for DEBIT transactions");
                 }
             }
@@ -131,11 +144,11 @@ public class Transaction {
         this.type = type;
     }
 
-    public String getCategory() {
+    public TransactionCategory getCategory() {
         return category;
     }
 
-    public void setCategory(String category) {
+    public void setCategory(TransactionCategory category) {
         this.category = category;
     }
 

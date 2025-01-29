@@ -4,6 +4,7 @@ import com.hsbc.banking.transaction.exception.DuplicateTransactionException;
 import com.hsbc.banking.transaction.exception.InsufficientBalanceException;
 import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.model.TransactionType;
+import com.hsbc.banking.transaction.model.TransactionCategory;
 import com.hsbc.banking.transaction.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,7 @@ class TransactionServiceTest {
     private static final String ACCOUNT_ID = "ACC-012345";
     private static final BigDecimal AMOUNT = new BigDecimal("-100.00");
     private static final String TYPE = TransactionType.DEBIT.name();
-    private static final String CATEGORY = "Salary";
+    private static final String CATEGORY = TransactionCategory.SALARY.name();
     private static final String DESCRIPTION = "Monthly salary";
 
     @BeforeEach
@@ -65,7 +66,7 @@ class TransactionServiceTest {
         assertThat(result.getAccountId()).isEqualTo(ACCOUNT_ID);
         assertThat(result.getAmount()).isEqualTo(AMOUNT);
         assertThat(result.getType()).isEqualTo(TransactionType.DEBIT);
-        assertThat(result.getCategory()).isEqualTo(CATEGORY);
+        assertThat(result.getCategory()).isEqualTo(TransactionCategory.SALARY);
         assertThat(result.getDescription()).isEqualTo(DESCRIPTION);
     }
 

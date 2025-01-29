@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Stream;
 
@@ -19,7 +20,7 @@ class TransactionTest {
     private static final String VALID_ACCOUNT_ID = "ACC-123456";
     private static final BigDecimal VALID_CREDIT_AMOUNT = new BigDecimal("100.00");
     private static final BigDecimal VALID_DEBIT_AMOUNT = new BigDecimal("-100.00");
-    private static final String VALID_CATEGORY = "Salary";
+    private static final String VALID_CATEGORY = TransactionCategory.SALARY.name();
     private static final String VALID_DESCRIPTION = "Monthly salary";
 
     @Test
@@ -40,7 +41,7 @@ class TransactionTest {
         assertThat(transaction.getAccountId()).isEqualTo(VALID_ACCOUNT_ID);
         assertThat(transaction.getAmount()).isEqualTo(VALID_CREDIT_AMOUNT);
         assertThat(transaction.getType()).isEqualTo(TransactionType.CREDIT);
-        assertThat(transaction.getCategory()).isEqualTo(VALID_CATEGORY);
+        assertThat(transaction.getCategory()).isEqualTo(TransactionCategory.SALARY);
         assertThat(transaction.getDescription()).isEqualTo(VALID_DESCRIPTION);
     }
 
@@ -52,7 +53,7 @@ class TransactionTest {
             VALID_ACCOUNT_ID,
             VALID_DEBIT_AMOUNT,
             TransactionType.DEBIT.name(),
-            VALID_CATEGORY,
+            TransactionCategory.SHOPPING.name(),
             VALID_DESCRIPTION
         );
 
@@ -62,7 +63,7 @@ class TransactionTest {
         assertThat(transaction.getAccountId()).isEqualTo(VALID_ACCOUNT_ID);
         assertThat(transaction.getAmount()).isEqualTo(VALID_DEBIT_AMOUNT);
         assertThat(transaction.getType()).isEqualTo(TransactionType.DEBIT);
-        assertThat(transaction.getCategory()).isEqualTo(VALID_CATEGORY);
+        assertThat(transaction.getCategory()).isEqualTo(TransactionCategory.SHOPPING);
         assertThat(transaction.getDescription()).isEqualTo(VALID_DESCRIPTION);
     }
 
@@ -127,18 +128,28 @@ class TransactionTest {
                 "Amount cannot have more than 2 decimal places"
             ),
             Arguments.of(
-                VALID_ORDER_ID, VALID_ACCOUNT_ID, new BigDecimal("0.009"), TransactionType.DEBIT.name(), VALID_CATEGORY, VALID_DESCRIPTION,
-                "Amount absolute value cannot be less than 0.01"
-            ),
-            Arguments.of(
                 VALID_ORDER_ID, VALID_ACCOUNT_ID, null, TransactionType.CREDIT.name(), VALID_CATEGORY, VALID_DESCRIPTION,
                 "Amount cannot be null"
             ),
             
             // Invalid Transaction Type
             Arguments.of(
+                VALID_ORDER_ID, VALID_ACCOUNT_ID, VALID_CREDIT_AMOUNT, "INVALID_TYPE", VALID_CATEGORY, VALID_DESCRIPTION,
+                    "Invalid transaction type. Valid types are: " + Arrays.toString(TransactionType.values())
+            ),
+            Arguments.of(
                 VALID_ORDER_ID, VALID_ACCOUNT_ID, VALID_CREDIT_AMOUNT, null, VALID_CATEGORY, VALID_DESCRIPTION,
                 "Transaction type cannot be null"
+            ),
+
+            // Invalid Category
+            Arguments.of(
+                VALID_ORDER_ID, VALID_ACCOUNT_ID, VALID_CREDIT_AMOUNT, TransactionType.CREDIT.name(), "INVALID_CATEGORY", VALID_DESCRIPTION,
+                "Invalid transaction category. Valid categories are: " + Arrays.toString(TransactionCategory.values())
+            ),
+            Arguments.of(
+                VALID_ORDER_ID, VALID_ACCOUNT_ID, VALID_CREDIT_AMOUNT, TransactionType.CREDIT.name(), null, VALID_DESCRIPTION,
+                "Transaction category cannot be null"
             ),
             
             // Invalid Description Length

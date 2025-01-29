@@ -2,6 +2,7 @@ package com.hsbc.banking.transaction.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.hsbc.banking.transaction.model.TransactionType;
+import com.hsbc.banking.transaction.model.TransactionCategory;
 import java.math.BigDecimal;
 
 public record TransactionResponse(
@@ -11,6 +12,6 @@ public record TransactionResponse(
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "#.00")
     BigDecimal amount,
     TransactionType type,
-    String category,
+    TransactionCategory category,
     String description
 ) {} 

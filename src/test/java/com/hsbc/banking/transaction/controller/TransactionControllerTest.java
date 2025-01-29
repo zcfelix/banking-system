@@ -4,6 +4,7 @@ import com.hsbc.banking.transaction.exception.DuplicateTransactionException;
 import com.hsbc.banking.transaction.exception.InvalidTransactionException;
 import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.model.TransactionType;
+import com.hsbc.banking.transaction.model.TransactionCategory;
 import com.hsbc.banking.transaction.service.TransactionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,7 +36,7 @@ public class TransactionControllerTest {
                 "accountId":"ACC-012345",
                 "amount":100.00,
                 "type":"%s",
-                "category":"Salary",
+                "category":"SALARY",
                 "description":"Monthly salary"
             }
             """;
@@ -60,14 +61,16 @@ public class TransactionControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
                 .andExpect(jsonPath("$.orderId").value("ORD-012345"))
-                .andExpect(jsonPath("$.type").value("CREDIT"));
+                .andExpect(jsonPath("$.type").value("CREDIT"))
+                .andExpect(jsonPath("$.category").value("SALARY"));
     }
 
     @Test
     void should_create_transaction_with_lowercase_type() throws Exception {
         performTransactionCreation("ORD-012345", "credit")
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.type").value("CREDIT"));
+                .andExpect(jsonPath("$.type").value("CREDIT"))
+                .andExpect(jsonPath("$.category").value("SALARY"));
     }
 
     @Test
@@ -91,7 +94,8 @@ public class TransactionControllerTest {
     void should_return_400_when_type_is_invalid() throws Exception {
         performTransactionCreation("ORD-012345", "INVALID")
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_TRANSACTION"));
+                .andExpect(jsonPath("$.code").value("INVALID_TRANSACTION"))
+                .andExpect(jsonPath("$.data.errors[0]").value("Invalid transaction type. Valid types are: " + Arrays.toString(TransactionType.values())));
     }
 
     private Transaction createMockTransaction() {
@@ -100,7 +104,7 @@ public class TransactionControllerTest {
                 "ACC-012345",
                 new BigDecimal("100.00"),
                 TransactionType.CREDIT.name(),
-                "Salary",
+                TransactionCategory.SALARY.name(),
                 "Monthly salary"
         );
         transaction.setId(1L);
@@ -116,7 +120,7 @@ public class TransactionControllerTest {
                 any(String.class),
                 any(String.class)))
                 .thenThrow(new InvalidTransactionException(
-                        Map.of("type", "Invalid transaction type. Valid values are: " + Arrays.toString(TransactionType.values()))));
+                        Map.of("errors", java.util.List.of("Invalid transaction type. Valid types are: " + Arrays.toString(TransactionType.values())))));
 
         when(transactionService.createTransaction(
                 any(String.class),
