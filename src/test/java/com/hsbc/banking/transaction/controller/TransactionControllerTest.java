@@ -32,7 +32,7 @@ public class TransactionControllerTest {
     private static final String BASE_TRANSACTION_JSON = """
             {
                 "orderId":"%s",
-                "accountId":"ACC-001",
+                "accountId":"ACC-012345",
                 "amount":100.00,
                 "type":"%s",
                 "category":"Salary",
@@ -56,16 +56,16 @@ public class TransactionControllerTest {
 
     @Test
     void should_create_transaction() throws Exception {
-        performTransactionCreation("ORD-001", "CREDIT")
+        performTransactionCreation("ORD-012345", "CREDIT")
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.orderId").value("ORD-001"))
+                .andExpect(jsonPath("$.orderId").value("ORD-012345"))
                 .andExpect(jsonPath("$.type").value("CREDIT"));
     }
 
     @Test
     void should_create_transaction_with_lowercase_type() throws Exception {
-        performTransactionCreation("ORD-001", "credit")
+        performTransactionCreation("ORD-012345", "credit")
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.type").value("CREDIT"));
     }
@@ -73,10 +73,10 @@ public class TransactionControllerTest {
     @Test
     void should_return_409_when_transaction_is_duplicate() throws Exception {
         setupDuplicateTransactionMock();
-        performTransactionCreation("ORD-001", "CREDIT")
+        performTransactionCreation("ORD-012345", "CREDIT")
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("TRANSACTION_CONFLICT"))
-                .andExpect(jsonPath("$.data.orderId").value("ORD-001"));
+                .andExpect(jsonPath("$.data.orderId").value("ORD-012345"));
     }
 
     @Test
@@ -89,17 +89,17 @@ public class TransactionControllerTest {
 
     @Test
     void should_return_400_when_type_is_invalid() throws Exception {
-        performTransactionCreation("ORD-001", "INVALID")
+        performTransactionCreation("ORD-012345", "INVALID")
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_TRANSACTION"));
     }
 
     private Transaction createMockTransaction() {
-        Transaction transaction = new Transaction(
-                "ORD-001",
-                "ACC-001",
-                new BigDecimal("100.00"),
-                TransactionType.CREDIT,
+        Transaction transaction = Transaction.create(
+                "ORD-012345",
+                "ACC-012345",
+                new BigDecimal("-100.00"),
+                TransactionType.CREDIT.name(),
                 "Salary",
                 "Monthly salary"
         );
@@ -116,7 +116,7 @@ public class TransactionControllerTest {
                 any(String.class),
                 any(String.class)))
                 .thenThrow(new InvalidTransactionException(
-                        Map.of("type", "Invalid transaction type. Valid values are: CREDIT, DEBIT, TRANSFER_IN, TRANSFER_OUT, INVESTMENT, INVESTMENT_RETURN, LOAN_DISBURSEMENT, LOAN_REPAYMENT, FEE, INTEREST, CHARGE, REFUND")));
+                        Map.of("type", "Invalid transaction type. Valid values are: " + Arrays.toString(TransactionType.values()))));
 
         when(transactionService.createTransaction(
                 any(String.class),
@@ -137,8 +137,8 @@ public class TransactionControllerTest {
                 any(String.class),
                 any(String.class)))
                 .thenThrow(new DuplicateTransactionException(
-                        Map.of("orderId", "ORD-001", 
-                              "message", "Transaction with ORD-001 already exists")
+                        Map.of("orderId", "ORD-012345",
+                              "message", "Transaction with ORD-012345 already exists")
                 ));
     }
 
