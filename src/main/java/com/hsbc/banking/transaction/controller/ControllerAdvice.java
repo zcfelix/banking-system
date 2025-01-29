@@ -1,7 +1,7 @@
 package com.hsbc.banking.transaction.controller;
 
 import com.hsbc.banking.transaction.dto.ErrorDetail;
-import com.hsbc.banking.transaction.model.AppException;
+import com.hsbc.banking.transaction.exception.AppException;
 import com.hsbc.banking.transaction.model.ErrorCode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

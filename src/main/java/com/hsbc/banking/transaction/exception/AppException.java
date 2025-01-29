@@ -1,4 +1,6 @@
-package com.hsbc.banking.transaction.model;
+package com.hsbc.banking.transaction.exception;
+
+import com.hsbc.banking.transaction.model.ErrorCode;
 
 import java.util.Map;
 
