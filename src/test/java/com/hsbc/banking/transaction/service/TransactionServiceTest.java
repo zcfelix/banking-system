@@ -2,6 +2,7 @@ package com.hsbc.banking.transaction.service;
 
 import com.hsbc.banking.transaction.exception.DuplicateTransactionException;
 import com.hsbc.banking.transaction.model.Transaction;
+import com.hsbc.banking.transaction.model.TransactionType;
 import com.hsbc.banking.transaction.repository.TransactionRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -31,7 +32,7 @@ class TransactionServiceTest {
     private static final String ORDER_ID = "ORD-001";
     private static final String ACCOUNT_ID = "ACC-001";
     private static final BigDecimal AMOUNT = new BigDecimal("100.00");
-    private static final String TYPE = "Credit";
+    private static final TransactionType TYPE = TransactionType.CREDIT;
     private static final String CATEGORY = "Salary";
     private static final String DESCRIPTION = "Monthly salary";
 
@@ -65,11 +66,12 @@ class TransactionServiceTest {
     @Test
     void should_throw_exception_when_transaction_is_duplicate() {
         // Given
+        Map<String, Object> errorData = Map.of(
+            "orderId", ORDER_ID,
+            "message", "Transaction with order ID already exists"
+        );
         when(transactionRepository.save(any(Transaction.class)))
-            .thenThrow(new DuplicateTransactionException(Map.of(
-                "orderId", ORDER_ID,
-                "message", "Transaction with order ID already exists"
-            )));
+            .thenThrow(new DuplicateTransactionException(errorData));
 
         // When/Then
         assertThatThrownBy(() -> 

@@ -2,6 +2,7 @@ package com.hsbc.banking.transaction.controller;
 
 import com.hsbc.banking.transaction.exception.DuplicateTransactionException;
 import com.hsbc.banking.transaction.model.Transaction;
+import com.hsbc.banking.transaction.model.TransactionType;
 import com.hsbc.banking.transaction.service.TransactionService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,7 +38,7 @@ public class TransactionControllerTest {
                 "ORD-001",
                 "ACC-001",
                 new BigDecimal("100.00"),
-                "Credit",
+                TransactionType.CREDIT,
                 "Salary",
                 "Monthly salary"
         );
@@ -47,7 +48,7 @@ public class TransactionControllerTest {
                 any(String.class),
                 any(String.class),
                 any(BigDecimal.class),
-                any(String.class),
+                any(TransactionType.class),
                 any(String.class),
                 any(String.class)))
                 .thenReturn(mockTransaction);
@@ -60,7 +61,7 @@ public class TransactionControllerTest {
                     "orderId":"ORD-001",
                     "accountId":"ACC-001",
                     "amount":100.00,
-                    "type":"Credit",
+                    "type":"CREDIT",
                     "category":"Salary",
                     "description":"Monthly salary"
                 }
@@ -74,7 +75,7 @@ public class TransactionControllerTest {
                 .andExpect(jsonPath("$.orderId").value("ORD-001"))
                 .andExpect(jsonPath("$.accountId").value("ACC-001"))
                 .andExpect(jsonPath("$.amount").value("100.00"))
-                .andExpect(jsonPath("$.type").value("Credit"))
+                .andExpect(jsonPath("$.type").value("CREDIT"))
                 .andExpect(jsonPath("$.category").value("Salary"))
                 .andExpect(jsonPath("$.description").value("Monthly salary"));
     }
@@ -85,7 +86,7 @@ public class TransactionControllerTest {
                 any(String.class),
                 any(String.class),
                 any(BigDecimal.class),
-                any(String.class),
+                any(TransactionType.class),
                 any(String.class),
                 any(String.class)))
                 .thenThrow(new DuplicateTransactionException(
@@ -99,7 +100,7 @@ public class TransactionControllerTest {
                     "orderId":"ORD-001",
                     "accountId":"ACC-001",
                     "amount":100.00,
-                    "type":"Credit",
+                    "type":"CREDIT",
                     "category":"Salary",
                     "description":"Monthly salary"
                 }

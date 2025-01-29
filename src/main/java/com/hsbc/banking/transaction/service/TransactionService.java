@@ -1,6 +1,7 @@
 package com.hsbc.banking.transaction.service;
 
 import com.hsbc.banking.transaction.model.Transaction;
+import com.hsbc.banking.transaction.model.TransactionType;
 import com.hsbc.banking.transaction.repository.TransactionRepository;
 import org.springframework.stereotype.Service;
 
@@ -17,7 +18,7 @@ public class TransactionService {
     public Transaction createTransaction(String orderId,
                                       String accountId,
                                       BigDecimal amount,
-                                      String type,
+                                      TransactionType type,
                                       String category,
                                       String description) {
         Transaction transaction = new Transaction(orderId, accountId, amount, type, category, description);

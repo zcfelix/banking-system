@@ -8,11 +8,11 @@ public class Transaction {
     private String orderId;
     private String accountId;
     private BigDecimal amount;
-    private String type;
+    private TransactionType type;
     private String category;
     private String description;
 
-    public Transaction(String orderId, String accountId, BigDecimal amount, String type, String category, String description) {
+    public Transaction(String orderId, String accountId, BigDecimal amount, TransactionType type, String category, String description) {
         this.orderId = orderId;
         this.accountId = accountId;
         this.amount = amount;
@@ -54,11 +54,11 @@ public class Transaction {
         this.amount = amount;
     }
 
-    public String getType() {
+    public TransactionType getType() {
         return type;
     }
 
-    public void setType(String type) {
+    public void setType(TransactionType type) {
         this.type = type;
     }
 
