@@ -17,8 +17,8 @@ class TransactionTest {
 
     private static final String VALID_ORDER_ID = "ORD-123456";
     private static final String VALID_ACCOUNT_ID = "ACC-123456";
-    private static final BigDecimal VALID_CREDIT_AMOUNT = new BigDecimal("-100.00");
-    private static final BigDecimal VALID_DEBIT_AMOUNT = new BigDecimal("100.00");
+    private static final BigDecimal VALID_CREDIT_AMOUNT = new BigDecimal("100.00");
+    private static final BigDecimal VALID_DEBIT_AMOUNT = new BigDecimal("-100.00");
     private static final String VALID_CATEGORY = "Salary";
     private static final String VALID_DESCRIPTION = "Monthly salary";
 
@@ -115,12 +115,12 @@ class TransactionTest {
             
             // Invalid Amount scenarios
             Arguments.of(
-                VALID_ORDER_ID, VALID_ACCOUNT_ID, new BigDecimal("100.00"), TransactionType.CREDIT.name(), VALID_CATEGORY, VALID_DESCRIPTION,
-                "Amount must be negative for CREDIT transactions"
+                VALID_ORDER_ID, VALID_ACCOUNT_ID, new BigDecimal("-100.00"), TransactionType.CREDIT.name(), VALID_CATEGORY, VALID_DESCRIPTION,
+                "Amount must be positive for CREDIT transactions"
             ),
             Arguments.of(
-                VALID_ORDER_ID, VALID_ACCOUNT_ID, new BigDecimal("-100.00"), TransactionType.DEBIT.name(), VALID_CATEGORY, VALID_DESCRIPTION,
-                "Amount must be positive for DEBIT transactions"
+                VALID_ORDER_ID, VALID_ACCOUNT_ID, new BigDecimal("100.00"), TransactionType.DEBIT.name(), VALID_CATEGORY, VALID_DESCRIPTION,
+                "Amount must be negative for DEBIT transactions"
             ),
             Arguments.of(
                 VALID_ORDER_ID, VALID_ACCOUNT_ID, new BigDecimal("0.001"), TransactionType.DEBIT.name(), VALID_CATEGORY, VALID_DESCRIPTION,

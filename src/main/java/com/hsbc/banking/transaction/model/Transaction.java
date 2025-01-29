@@ -72,10 +72,10 @@ public class Transaction {
             // Validate amount sign based on transaction type
             if (type != null) {
                 TransactionType convertedType = TransactionType.fromString(type);
-                if (convertedType == TransactionType.CREDIT && amount.compareTo(BigDecimal.ZERO) >= 0) {
-                    errors.add("Amount must be negative for CREDIT transactions");
-                } else if (convertedType == TransactionType.DEBIT && amount.compareTo(BigDecimal.ZERO) <= 0) {
-                    errors.add("Amount must be positive for DEBIT transactions");
+                if (convertedType == TransactionType.CREDIT && amount.compareTo(BigDecimal.ZERO) <= 0) {
+                    errors.add("Amount must be positive for CREDIT transactions");
+                } else if (convertedType == TransactionType.DEBIT && amount.compareTo(BigDecimal.ZERO) >= 0) {
+                    errors.add("Amount must be negative for DEBIT transactions");
                 }
             }
         } else {

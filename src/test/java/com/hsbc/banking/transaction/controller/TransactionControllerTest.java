@@ -98,7 +98,7 @@ public class TransactionControllerTest {
         Transaction transaction = Transaction.create(
                 "ORD-012345",
                 "ACC-012345",
-                new BigDecimal("-100.00"),
+                new BigDecimal("100.00"),
                 TransactionType.CREDIT.name(),
                 "Salary",
                 "Monthly salary"

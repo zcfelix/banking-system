@@ -52,12 +52,14 @@ public enum TransactionType {
         return valueOf(value.toUpperCase());
     }
 
+    // Detect if the transaction type is a credit transaction, i.e. money is added to the account from bank's perspective
     public boolean isCredit() {
         return this == CREDIT || this == TRANSFER_IN || 
                this == INVESTMENT_RETURN || this == LOAN_DISBURSEMENT || 
                this == REFUND;
     }
 
+    // Detect if the transaction type is a debit transaction, i.e. money is deducted from the account from bank's perspective
     public boolean isDebit() {
         return this == DEBIT || this == TRANSFER_OUT || 
                this == INVESTMENT || this == LOAN_REPAYMENT || 
