@@ -8,5 +8,7 @@ import java.util.Optional;
 public interface TransactionRepository {
     Transaction save(Transaction transaction);
     Optional<Transaction> findById(Long id);
+    Optional<Transaction> findByOrderId(String orderId);
     List<Transaction> findAll();
+    void clear();
 } 

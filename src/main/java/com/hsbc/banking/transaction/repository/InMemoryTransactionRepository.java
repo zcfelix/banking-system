@@ -36,8 +36,20 @@ public class InMemoryTransactionRepository implements TransactionRepository {
     }
 
     @Override
+    public Optional<Transaction> findByOrderId(String orderId) {
+        return Optional.ofNullable(orderIdIndex.get(orderId));
+    }
+
+    @Override
     public List<Transaction> findAll() {
         return new ArrayList<>(transactions.values());
+    }
+
+    @Override
+    public void clear() {
+        transactions.clear();
+        orderIdIndex.clear();
+        idGenerator.set(1);
     }
 
     private void checkDuplicate(Transaction transaction) {
