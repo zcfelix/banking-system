@@ -1,14 +1,13 @@
 package com.hsbc.banking.transaction.controller;
 
-import com.hsbc.banking.transaction.dto.CreateTransactionRequest;
-import com.hsbc.banking.transaction.dto.TransactionResponse;
-import com.hsbc.banking.transaction.dto.UpdateTransactionRequest;
-import com.hsbc.banking.transaction.dto.PageResponse;
+import com.hsbc.banking.transaction.dto.*;
 import com.hsbc.banking.transaction.model.Page;
 import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.service.TransactionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -34,8 +33,14 @@ public class TransactionController {
             description = "Creates a new transaction with the provided details")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "Transaction created successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input"),
-            @ApiResponse(responseCode = "409", description = "Transaction already exists")
+            @ApiResponse(responseCode = "400", description = "Invalid input", content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorDetail.class)
+            )),
+            @ApiResponse(responseCode = "409", description = "Transaction already exists", content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorDetail.class)
+            ))
     })
     @PostMapping
     public ResponseEntity<TransactionResponse> createTransaction(
@@ -51,7 +56,10 @@ public class TransactionController {
             description = "Deletes a transaction by its ID")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Transaction deleted successfully"),
-            @ApiResponse(responseCode = "404", description = "Transaction not found")
+            @ApiResponse(responseCode = "404", description = "Transaction not found", content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorDetail.class)
+            ))
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTransaction(
@@ -65,9 +73,18 @@ public class TransactionController {
             description = "Updates an existing transaction with the provided details")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Transaction updated successfully"),
-            @ApiResponse(responseCode = "400", description = "Invalid input"),
-            @ApiResponse(responseCode = "404", description = "Transaction not found"),
-            @ApiResponse(responseCode = "409", description = "Concurrent update conflict")
+            @ApiResponse(responseCode = "400", description = "Invalid input", content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorDetail.class)
+            )),
+            @ApiResponse(responseCode = "404", description = "Transaction not found", content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorDetail.class)
+            )),
+            @ApiResponse(responseCode = "409", description = "Concurrent update conflict", content = @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ErrorDetail.class)
+            ))
     })
     @PutMapping("/{id}")
     public ResponseEntity<TransactionResponse> updateTransaction(
@@ -84,7 +101,6 @@ public class TransactionController {
             description = "Returns a paginated list of all transactions")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Successfully retrieved list"),
-            @ApiResponse(responseCode = "400", description = "Invalid page parameters")
     })
     @GetMapping
     public ResponseEntity<PageResponse<TransactionResponse>> listTransactions(
