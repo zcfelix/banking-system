@@ -1,12 +1,13 @@
 package com.hsbc.banking.transaction.integration;
 
+import com.hsbc.banking.transaction.model.AuditLog;
 import com.hsbc.banking.transaction.model.Transaction;
 import com.hsbc.banking.transaction.model.TransactionCategory;
 import com.hsbc.banking.transaction.model.TransactionType;
-import com.hsbc.banking.transaction.repository.TransactionRepository;
 import com.hsbc.banking.transaction.repository.AuditLogRepository;
-import com.hsbc.banking.transaction.model.AuditLog;
+import com.hsbc.banking.transaction.repository.TransactionRepository;
 import com.hsbc.banking.transaction.service.ExternalAccountService;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -16,7 +17,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import com.jayway.jsonpath.JsonPath;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -27,8 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -191,19 +190,105 @@ class TransactionIntegrationTest {
             // Then
             assertThat(transactionRepository.findById(savedTransaction.getId())).isEmpty();
             
-            // Verify audit log
+            // Verify audit log - find the most recent DELETE operation
             List<AuditLog> auditLogs = auditLogRepository.findByEntityTypeAndEntityId(
                     "Transaction", String.valueOf(savedTransaction.getId()));
-            assertThat(auditLogs).hasSize(1);
-            AuditLog auditLog = auditLogs.get(0);
-            assertThat(auditLog.getOperation()).isEqualTo("DELETE");
-            assertThat(auditLog.getDetails()).contains("ORD-123456");
+            AuditLog deleteLog = auditLogs.stream()
+                    .filter(log -> "DELETE".equals(log.getOperation()))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Delete audit log not found"));
+            
+            assertThat(deleteLog.getOperation()).isEqualTo("DELETE");
+            assertThat(deleteLog.getDetails()).contains("ORD-123456");
         }
 
         @Test
         void should_return_404_when_deleting_non_existent_transaction() throws Exception {
             // When/Then
             mockMvc.perform(delete("/transactions/{id}", 999))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("TRANSACTION_NOT_FOUND"))
+                    .andExpect(jsonPath("$.data.transactionId").value(999))
+                    .andExpect(jsonPath("$.data.message").value("Transaction not found with ID: 999"));
+        }
+    }
+
+    @Nested
+    class UpdateTransaction {
+        private static final String UPDATE_TRANSACTION_REQUEST = """
+                {
+                    "orderId": "ORD-999999",
+                    "accountId": "ACC-999999",
+                    "amount": 999.99,
+                    "type": "DEBIT",
+                    "category": "SHOPPING",
+                    "description": "Updated description"
+                }
+                """;
+
+        @Test
+        void should_update_transaction_successfully_and_ignore_immutable_fields() throws Exception {
+            // Given - Create a transaction first
+            mockMvc.perform(post("/transactions")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(CREATE_CREDIT_TRANSACTION_REQUEST))
+                    .andExpect(status().isCreated());
+
+            Transaction savedTransaction = transactionRepository.findByOrderId("ORD-123456")
+                    .orElseThrow(() -> new AssertionError("Transaction not found"));
+            LocalDateTime originalCreatedAt = savedTransaction.getCreatedAt();
+            LocalDateTime originalUpdatedAt = savedTransaction.getUpdatedAt();
+
+            // When
+            mockMvc.perform(put("/transactions/{id}", savedTransaction.getId())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(UPDATE_TRANSACTION_REQUEST))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(savedTransaction.getId()))
+                    .andExpect(jsonPath("$.orderId").value(savedTransaction.getOrderId()))
+                    .andExpect(jsonPath("$.accountId").value(savedTransaction.getAccountId()))
+                    .andExpect(jsonPath("$.amount").value(savedTransaction.getAmount()))
+                    .andExpect(jsonPath("$.type").value(savedTransaction.getType().name()))
+                    .andExpect(jsonPath("$.category").value("SHOPPING"))
+                    .andExpect(jsonPath("$.description").value("Updated description"))
+                    .andExpect(jsonPath("$.createdAt").exists())
+                    .andExpect(jsonPath("$.updatedAt").exists())
+                    .andExpect(result -> {
+                        String updatedAt = JsonPath.read(result.getResponse().getContentAsString(), "$.updatedAt");
+                        assertThat(updatedAt).isNotEqualTo(originalUpdatedAt.toString());
+                    });
+
+            // Then
+            Transaction updatedTransaction = transactionRepository.findById(savedTransaction.getId())
+                    .orElseThrow(() -> new AssertionError("Transaction not found"));
+            assertThat(updatedTransaction.getCreatedAt()).isEqualTo(originalCreatedAt);
+            assertThat(updatedTransaction.getUpdatedAt()).isAfter(originalUpdatedAt);
+            assertThat(updatedTransaction.getCategory()).isEqualTo(TransactionCategory.SHOPPING);
+            assertThat(updatedTransaction.getDescription()).isEqualTo("Updated description");
+            
+            // Verify immutable fields remain unchanged
+            assertThat(updatedTransaction.getOrderId()).isEqualTo("ORD-123456");
+            assertThat(updatedTransaction.getAccountId()).isEqualTo("ACC-123456");
+            assertThat(updatedTransaction.getAmount()).isEqualByComparingTo(new BigDecimal("100.00"));
+            assertThat(updatedTransaction.getType()).isEqualTo(TransactionType.CREDIT);
+
+            // Verify audit log - find the most recent UPDATE operation
+            List<AuditLog> auditLogs = auditLogRepository.findByEntityTypeAndEntityId(
+                    "Transaction", String.valueOf(savedTransaction.getId()));
+            AuditLog updateLog = auditLogs.stream()
+                    .filter(log -> "UPDATE".equals(log.getOperation()))
+                    .findFirst()
+                    .orElseThrow(() -> new AssertionError("Update audit log not found"));
+            assertThat(updateLog.getOperation()).isEqualTo("UPDATE");
+            assertThat(updateLog.getDetails()).contains("SALARY");
+        }
+
+        @Test
+        void should_return_404_when_updating_non_existent_transaction() throws Exception {
+            // When/Then
+            mockMvc.perform(put("/transactions/{id}", 999)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(UPDATE_TRANSACTION_REQUEST))
                     .andExpect(status().isNotFound())
                     .andExpect(jsonPath("$.code").value("TRANSACTION_NOT_FOUND"))
                     .andExpect(jsonPath("$.data.transactionId").value(999))

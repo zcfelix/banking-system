@@ -2,6 +2,7 @@ package com.hsbc.banking.transaction.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hsbc.banking.transaction.dto.CreateTransactionRequest;
+import com.hsbc.banking.transaction.dto.UpdateTransactionRequest;
 import com.hsbc.banking.transaction.exception.DuplicateTransactionException;
 import com.hsbc.banking.transaction.exception.InsufficientBalanceException;
 import com.hsbc.banking.transaction.exception.TransactionNotFoundException;
@@ -203,5 +204,55 @@ class TransactionServiceTest {
             assertThat(capturedLog.getEntityId()).isEqualTo(String.valueOf(transactionId));
             assertThat(capturedLog.getDetails()).contains("Failed to serialize transaction: Serialization failed");
         }
+    }
+
+    @Nested
+    class UpdateTransaction {
+        @Test
+        void should_update_transaction_successfully() {
+            // Given
+            Long transactionId = 1L;
+            when(transactionRepository.findById(transactionId)).thenReturn(Optional.of(mockTransaction));
+            when(transactionRepository.update(any(Transaction.class))).thenReturn(mockTransaction);
+
+            // When
+            Transaction result = transactionService.updateTransaction(transactionId, 
+                new UpdateTransactionRequest(TransactionCategory.SHOPPING.name(), "Updated description"));
+            LocalDateTime afterUpdate = LocalDateTime.now();
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getId()).isEqualTo(1L);
+            assertThat(result.getCategory()).isEqualTo(TransactionCategory.SHOPPING);
+            assertThat(result.getDescription()).isEqualTo("Updated description");
+            assertThat(result.getUpdatedAt())
+                    .isNotNull()
+                    .isAfter(result.getCreatedAt())
+                    .isBefore(afterUpdate);
+
+            verify(transactionRepository).update(any(Transaction.class));
+        }
+
+        @Test
+        void should_throw_exception_when_updating_non_existent_transaction() {
+            // Given
+            Long transactionId = 999L;
+            when(transactionRepository.findById(transactionId)).thenReturn(Optional.empty());
+
+            // When/Then
+            assertThatThrownBy(() -> 
+                transactionService.updateTransaction(transactionId, 
+                    new UpdateTransactionRequest(TransactionCategory.SHOPPING.name(), "Updated description")))
+                .isInstanceOf(TransactionNotFoundException.class)
+                .satisfies(thrown -> {
+                    TransactionNotFoundException ex = (TransactionNotFoundException) thrown;
+                    assertThat(ex.getData())
+                            .containsEntry("transactionId", transactionId)
+                            .containsEntry("message", "Transaction not found with ID: " + transactionId);
+                });
+
+            verify(transactionRepository, never()).update(any());
+        }
+
     }
 }

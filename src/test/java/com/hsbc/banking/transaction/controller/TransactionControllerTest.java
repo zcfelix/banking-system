@@ -167,6 +167,69 @@ class TransactionControllerTest {
         }
     }
 
+    @Nested
+    class UpdateTransaction {
+        private static final String UPDATE_TRANSACTION_JSON = """
+                {
+                    "orderId": "ORD-999999",
+                    "accountId": "ACC-999999",
+                    "amount": 999.99,
+                    "type": "DEBIT",
+                    "category": "SHOPPING",
+                    "description": "Updated description"
+                }
+                """;
+
+        @Test
+        void should_update_transaction_successfully_and_ignore_immutable_fields() throws Exception {
+            // Given
+            Long transactionId = 1L;
+            Transaction updatedTransaction = createMockTransaction();
+            updatedTransaction.setCategory(TransactionCategory.SHOPPING);
+            updatedTransaction.setDescription("Updated description");
+            updatedTransaction.setUpdatedAt(updatedTransaction.getCreatedAt().plusSeconds(1));
+            when(transactionService.updateTransaction(eq(transactionId), any())).thenReturn(updatedTransaction);
+
+            // When & Then
+            mockMvc.perform(put("/transactions/{id}", transactionId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(UPDATE_TRANSACTION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.id").value(1))
+                    .andExpect(jsonPath("$.orderId").value("ORD-012345"))
+                    .andExpect(jsonPath("$.accountId").value("ACC-012345"))
+                    .andExpect(jsonPath("$.amount").value(100.00))
+                    .andExpect(jsonPath("$.type").value("CREDIT"))
+                    .andExpect(jsonPath("$.category").value("SHOPPING"))
+                    .andExpect(jsonPath("$.description").value("Updated description"))
+                    .andExpect(jsonPath("$.createdAt").exists())
+                    .andExpect(jsonPath("$.updatedAt").exists())
+                    .andExpect(result -> {
+                        String createdAt = JsonPath.read(result.getResponse().getContentAsString(), "$.createdAt");
+                        String updatedAt = JsonPath.read(result.getResponse().getContentAsString(), "$.updatedAt");
+                        assertThat(updatedAt).isNotEqualTo(createdAt);
+                    });
+        }
+
+        @Test
+        void should_return_404_when_updating_non_existent_transaction() throws Exception {
+            // Given
+            Long transactionId = 999L;
+            when(transactionService.updateTransaction(eq(transactionId), any()))
+                    .thenThrow(new TransactionNotFoundException(transactionId));
+
+            // When & Then
+            mockMvc.perform(put("/transactions/{id}", transactionId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(UPDATE_TRANSACTION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.code").value("TRANSACTION_NOT_FOUND"))
+                    .andExpect(jsonPath("$.data.transactionId").value(transactionId))
+                    .andExpect(jsonPath("$.data.message").value("Transaction not found with ID: " + transactionId));
+        }
+
+    }
+
     private Transaction createMockTransaction() {
         Transaction transaction = Transaction.create(
                 "ORD-012345",
