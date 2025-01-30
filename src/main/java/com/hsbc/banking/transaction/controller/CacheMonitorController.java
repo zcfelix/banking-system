@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/v1/cache")
+@RequestMapping("/cache")
 public class CacheMonitorController {
     private final CacheManager cacheManager;
 

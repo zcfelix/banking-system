@@ -29,10 +29,10 @@ export const options = {
 
 // Test endpoints
 const ENDPOINTS = {
-  getTransactions: '/api/v1/transactions',
-  createTransaction: '/api/v1/transactions',
-  getTransaction: (id) => `/api/v1/transactions/${id}`,
-  updateTransaction: (id) => `/api/v1/transactions/${id}`,
+  getTransactions: '/transactions',
+  createTransaction: '/transactions',
+  getTransaction: (id) => `/transactions/${id}`,
+  updateTransaction: (id) => `/transactions/${id}`,
 };
 
 // Sample transaction data
