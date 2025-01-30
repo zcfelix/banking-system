@@ -4,6 +4,41 @@
 ![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.3-brightgreen)
 ![Build](https://img.shields.io/badge/build-passing-brightgreen)
 
+## Table of Contents 📑
+
+1. [Introduction](#1-introduction-)
+2. [Features](#2-features-)
+3. [API Documentation](#3-api-documentation-)
+   - [How to Access Swagger UI](#31-how-to-access-swagger-ui)
+   - [Available APIs](#32-available-apis)
+4. [Getting Started](#4-getting-started-)
+   - [Prerequisites](#41-prerequisites)
+   - [Running the Application](#42-running-the-application)
+     - [Local Development](#421-local-development)
+     - [Using Docker](#422-using-docker)
+   - [Running Tests](#43-running-tests)
+     - [Unit Tests](#431-unit-tests)
+     - [Integration Tests](#432-integration-tests)
+     - [Performance Tests](#433-performance-tests)
+5. [Architecture and Design](#5-architecture-and-design-%EF%B8%8F)
+   - [System Architecture](#51-system-architecture)
+   - [Project Structure](#52-project-structure)
+   - [Key Components](#53-key-components)
+     - [Transaction Model](#531-transaction-model)
+     - [In-Memory Transaction Repository](#532-in-memory-transaction-repository)
+6. [Key Design Considerations](#6-key-design-considerations-)
+   - [Concurrency Control](#61-concurrency-control)
+   - [Data Consistency](#62-data-consistency)
+   - [Performance Optimization](#63-performance-optimization)
+   - [Interface Injection & Dependency Inversion](#64-interface-injection--dependency-inversion)
+7. [Future Enhancements](#7-future-enhancements-)
+8. [External Dependencies](#8-external-dependencies-)
+   - [Core Dependencies](#81-core-dependencies)
+   - [Testing Dependencies](#82-testing-dependencies)
+   - [Documentation](#83-documentation)
+   - [Caching](#84-caching)
+   - [Performance Testing](#85-performance-testing)
+   
 ---
 
 ## 1. Introduction 📝
@@ -201,6 +236,39 @@ public class TransactionService {
 - Enhanced security features (JWT, OAuth)
 - Metrics dashboard (Prometheus, Grafana)
 
+## 8. External Dependencies 📚
 
+### 8.1 Core Dependencies
+- `spring-boot-starter-web` (v3.2.3)
+  - Purpose: Provides core Spring MVC functionality
+  - Features: RESTful API support, embedded Tomcat server
+
+- `spring-boot-starter-validation` (v3.2.3)
+  - Purpose: Bean validation support
+  - Features: Input validation, constraint annotations
+
+- `spring-boot-starter-cache` (v3.2.3)
+  - Purpose: Caching support for improved performance
+  - Features: Cache abstraction, Caffeine integration
+
+### 8.2 Testing Dependencies
+- `spring-boot-starter-test` (v3.2.3)
+  - Purpose: Testing framework integration
+  - Features: JUnit 5, Mockito, AssertJ
+
+### 8.3 Documentation
+- `springdoc-openapi-starter-webmvc-ui` (v2.3.0)
+  - Purpose: API documentation
+  - Features: OpenAPI 3.0, Swagger UI
+
+### 8.4 Caching
+- `caffeine` (Latest)
+  - Purpose: High-performance caching library
+  - Features: In-memory caching, thread-safe operations
+
+### 8.5 Performance Testing
+- `k6` (Latest)
+  - Purpose: Load and performance testing
+  - Features: Scripted tests, metrics collection
 
 
