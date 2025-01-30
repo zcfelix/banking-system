@@ -27,6 +27,9 @@ import java.util.Map;
 @Service
 public class TransactionService {
     private static final Logger logger = LoggerFactory.getLogger(TransactionService.class);
+    private static final int MAX_PAGE_SIZE = 100;
+    private static final int MAX_RETRIES = 3;
+    private static final long RETRY_DELAY_MS = 100;
     
     private final TransactionRepository transactionRepository;
     private final ExternalAccountService externalAccountService;
@@ -101,64 +104,19 @@ public class TransactionService {
     @CachePut(value = "transactions", key = "#id")
     public Transaction updateTransaction(Long id, UpdateTransactionRequest request) {
         logger.info("Updating transaction in cache and repository with id: {}", id);
-        int maxRetries = 3;
         int retryCount = 0;
         
-        while (retryCount < maxRetries) {
+        while (retryCount < MAX_RETRIES) {
             try {
-                Transaction transaction = transactionRepository.findById(id)
-                        .orElseThrow(() -> new TransactionNotFoundException(id));
-
-                // Validate category
-                try {
-                    TransactionCategory.fromString(request.category());
-                } catch (IllegalArgumentException e) {
-                    throw new InvalidTransactionException(Map.of(
-                            "errors", List.of("Invalid transaction category. Valid categories are: " + 
-                                    java.util.Arrays.toString(TransactionCategory.values()))
-                    ));
-                }
-
-                // Record the old state
-                String oldState;
-                try {
-                    oldState = objectMapper.writeValueAsString(transaction);
-                } catch (Exception e) {
-                    oldState = "Failed to serialize old state: " + e.getMessage();
-                }
-
-                // Only update category and description
-                transaction.setCategory(TransactionCategory.fromString(request.category()));
-                transaction.setDescription(request.description());
-                transaction.setUpdatedAt(LocalDateTime.now());
-
-                // Do the update
-                Transaction updatedTransaction = transactionRepository.update(transaction);
-
-                // Record the audit log only after the update is successful
-                String newState;
-                try {
-                    newState = objectMapper.writeValueAsString(updatedTransaction);
-                } catch (Exception e) {
-                    newState = "Failed to serialize new state: " + e.getMessage();
-                }
-
-                auditLogRepository.save(new AuditLog(
-                        "UPDATE",
-                        "Transaction",
-                        String.valueOf(id),
-                        "Updated transaction from: " + oldState + " to: " + newState
-                ));
-
-                return updatedTransaction;
+                return doUpdateTransaction(id, request);
             } catch (ConcurrentUpdateException e) {
                 retryCount++;
-                if (retryCount >= maxRetries) {
+                if (retryCount >= MAX_RETRIES) {
+                    logger.error("Failed to update transaction after {} retries", MAX_RETRIES);
                     throw e;
                 }
-                // Add some random delay before retrying
                 try {
-                    Thread.sleep((long) (Math.random() * 100));
+                    Thread.sleep((long) (Math.random() * RETRY_DELAY_MS));
                 } catch (InterruptedException ie) {
                     Thread.currentThread().interrupt();
                     throw new RuntimeException("Thread interrupted while retrying update", ie);
@@ -169,6 +127,56 @@ public class TransactionService {
         throw new IllegalStateException("Should never reach here");
     }
 
+    private Transaction doUpdateTransaction(Long id, UpdateTransactionRequest request) {
+        Transaction transaction = transactionRepository.findById(id)
+                .orElseThrow(() -> new TransactionNotFoundException(id));
+
+        // Validate category
+        try {
+            TransactionCategory.fromString(request.category());
+        } catch (IllegalArgumentException e) {
+            throw new InvalidTransactionException(Map.of(
+                    "errors", List.of("Invalid transaction category. Valid categories are: " + 
+                            java.util.Arrays.toString(TransactionCategory.values()))
+            ));
+        }
+
+        // Record the old state
+        String oldState = serializeTransaction(transaction);
+
+        // Only update category and description
+        transaction.setCategory(TransactionCategory.fromString(request.category()));
+        transaction.setDescription(request.description());
+        transaction.setUpdatedAt(LocalDateTime.now());
+
+        // Do the update
+        Transaction updatedTransaction = transactionRepository.update(transaction);
+
+        // Record the audit log
+        String newState = serializeTransaction(updatedTransaction);
+        recordAuditLog(id, oldState, newState);
+
+        return updatedTransaction;
+    }
+
+    private String serializeTransaction(Transaction transaction) {
+        try {
+            return objectMapper.writeValueAsString(transaction);
+        } catch (Exception e) {
+            logger.warn("Failed to serialize transaction: {}", e.getMessage());
+            return "Failed to serialize transaction: " + e.getMessage();
+        }
+    }
+
+    private void recordAuditLog(Long id, String oldState, String newState) {
+        auditLogRepository.save(new AuditLog(
+                "UPDATE",
+                "Transaction",
+                String.valueOf(id),
+                "Updated transaction from: " + oldState + " to: " + newState
+        ));
+    }
+
     @Cacheable(value = "transactionPages", key = "#pageNumber + '-' + #pageSize")
     public Page<Transaction> listTransactions(int pageNumber, int pageSize) {
         logger.info("Fetching transaction page from repository: page={}, size={}", pageNumber, pageSize);
@@ -177,8 +185,8 @@ public class TransactionService {
             return Page.of(List.of(), pageNumber, pageSize, 0);
         }
 
-        // Limit pageSize to 100
-        int limitedPageSize = Math.min(pageSize, 100);
+        // Limit pageSize to MAX_PAGE_SIZE
+        int limitedPageSize = Math.min(pageSize, MAX_PAGE_SIZE);
 
         // Calculate offset based on pageNumber and pageSize
         int offset = (pageNumber - 1) * limitedPageSize;

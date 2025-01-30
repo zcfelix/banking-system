@@ -22,7 +22,7 @@ public class CacheConfig {
                 .expireAfterWrite(60, TimeUnit.MINUTES)
                 .initialCapacity(100)
                 .maximumSize(500)
-                .recordStats();  // 启用统计
+                .recordStats();  // Enable statistics
     }
 
     @Bean
