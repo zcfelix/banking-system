@@ -40,7 +40,7 @@ public class InMemoryTransactionRepositoryImpl implements TransactionRepository 
     }
 
     @Override
-    public synchronized Transaction update(Transaction transaction) {
+    public Transaction update(Transaction transaction) {
         Transaction existingTransaction = transactions.get(transaction.getId());
         if (existingTransaction == null) {
             throw new TransactionNotFoundException(transaction.getId());
