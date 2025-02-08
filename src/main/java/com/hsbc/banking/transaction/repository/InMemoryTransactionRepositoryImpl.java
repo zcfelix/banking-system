@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 @Repository
-public class InMemoryTransactionRepository implements TransactionRepository {
+public class InMemoryTransactionRepositoryImpl implements TransactionRepository {
     private final ConcurrentSkipListMap<Long, Transaction> transactions = new ConcurrentSkipListMap<>();
     private final Map<String, Transaction> orderIdIndex = new ConcurrentHashMap<>();
     private final AtomicLong idGenerator = new AtomicLong(1);

@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 @Repository
-public class InMemoryAuditLogRepository implements AuditLogRepository {
+public class InMemoryAuditLogRepositoryImpl implements AuditLogRepository {
     private final Map<Long, AuditLog> auditLogs = new ConcurrentHashMap<>();
     private final AtomicLong idGenerator = new AtomicLong(1);
 
